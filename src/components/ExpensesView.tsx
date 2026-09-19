@@ -38,6 +38,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
   const [showAddForm, setShowAddForm] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [category, setCategory] = useState<ExpenseCategory>('Electricity');
+  const [otherDetail, setOtherDetail] = useState<string>('');
   const [amount, setAmount] = useState<number>(5000);
   const [frequency, setFrequency] = useState<ExpenseFrequency>('monthly');
   const [note, setNote] = useState<string>('');
@@ -59,19 +60,30 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
       return;
     }
 
+    if (category === 'Other' && !otherDetail.trim()) {
+      alert('Please specify what the "Other" expense is for (Other me kya kharcha hua h).');
+      return;
+    }
+
+    const fullNote = category === 'Other' && otherDetail.trim()
+      ? (note.trim() ? `${otherDetail.trim()} — ${note.trim()}` : otherDetail.trim())
+      : (note.trim() || undefined);
+
     const newExpense: Expense = {
       id: `exp-${Date.now()}`,
       date,
       category,
       amount: Number(amount),
       frequency,
-      note
+      otherDetail: category === 'Other' ? otherDetail.trim() : undefined,
+      note: fullNote
     };
 
     onAddExpense(newExpense);
     setShowAddForm(false);
     setAmount(0);
     setNote('');
+    setOtherDetail('');
   };
 
   return (
@@ -140,17 +152,38 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
           gap: '12px'
         }}
       >
-        {categoryTotals.map(cat => (
-          <div key={cat.name} className="hkb-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
-              {cat.icon}
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>{cat.name}</span>
+        {categoryTotals.map(cat => {
+          const isSelected = showAddForm && category === cat.name;
+          return (
+            <div
+              key={cat.name}
+              className="hkb-card"
+              onClick={() => {
+                setCategory(cat.name);
+                setShowAddForm(true);
+              }}
+              style={{
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                border: isSelected ? '2px solid #7C3AED' : '1px solid var(--line)',
+                background: isSelected ? '#F5F3FF' : '#FFFFFF'
+              }}
+              title={`Click to log ${cat.name} expense`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isSelected ? '#7C3AED' : 'var(--primary)' }}>
+                {cat.icon}
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>{cat.name}</span>
+              </div>
+              <span className="tabular-nums" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--ink)' }}>
+                ₹{cat.total.toLocaleString('en-IN')}
+              </span>
             </div>
-            <span className="tabular-nums" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--ink)' }}>
-              ₹{cat.total.toLocaleString('en-IN')}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Add Expense Drawer / Form */}
@@ -184,6 +217,38 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                 ))}
               </select>
             </div>
+
+            {/* When 'Other' category is chosen, show a clear dedicated input box asking what is in Other */}
+            {category === 'Other' && (
+              <div
+                className="form-group"
+                style={{
+                  gridColumn: '1 / -1',
+                  background: '#F5F3FF',
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #DDD6FE'
+                }}
+              >
+                <label className="form-label" style={{ color: '#7C3AED', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <CircleDollarSign size={16} />
+                  <span>Specify Other Expense (Other me kya kharcha hua h?) *</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ background: '#FFFFFF', borderColor: '#C4B5FD', fontSize: '13.5px', fontWeight: 600 }}
+                  placeholder="e.g. Chai-Nashta, Office Stationery, Municipal Tax, Hardware store tools, Challan, Office repair..."
+                  value={otherDetail}
+                  onChange={e => setOtherDetail(e.target.value)}
+                  required
+                  autoFocus
+                />
+                <span style={{ fontSize: '11.5px', color: '#6D28D9', marginTop: '4px', display: 'block' }}>
+                  Yahan likhein ki ye other kharcha kis cheez ke liye kiya gaya hai.
+                </span>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Amount (₹)</label>
@@ -228,7 +293,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
               className="form-input"
               value={note}
               onChange={e => setNote(e.target.value)}
-              placeholder="e.g. 80 Liters diesel for generator, technician visit fee"
+              placeholder="e.g. Bill #123, vendor details, technician visit fee..."
             />
           </div>
 
@@ -271,7 +336,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                   <tr key={exp.id}>
                     <td style={{ fontWeight: 600 }}>{exp.date}</td>
                     <td>
-                      <span className="badge badge-primary">{exp.category}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
+                        <span className="badge badge-primary">{exp.category}</span>
+                        {exp.category === 'Other' && (exp.otherDetail || (exp.note && exp.note.includes(' — '))) && (
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '1px 6px', borderRadius: '4px' }}>
+                            {exp.otherDetail || exp.note?.split(' — ')[0]}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <span className="badge badge-warn">{exp.frequency}</span>
@@ -279,7 +351,11 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                     <td className="tabular-nums" style={{ fontWeight: 700, color: 'var(--ink)' }}>
                       ₹{exp.amount.toLocaleString('en-IN')}
                     </td>
-                    <td>{exp.note || '—'}</td>
+                    <td>
+                      {exp.category === 'Other' && exp.otherDetail && exp.note && exp.note.includes(' — ')
+                        ? exp.note.split(' — ').slice(1).join(' — ') || '—'
+                        : (exp.note || '—')}
+                    </td>
                     <td style={{ textAlign: 'right' }}>
                       <button
                         className="btn btn-secondary btn-sm"

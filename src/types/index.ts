@@ -90,6 +90,7 @@ export interface Expense {
   category: ExpenseCategory;
   amount: number;
   frequency: ExpenseFrequency;
+  otherDetail?: string; // What the "Other" expense is for
   note?: string;
   created_at?: string;
 }
