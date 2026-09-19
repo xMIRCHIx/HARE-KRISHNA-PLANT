@@ -35,6 +35,7 @@ import {
 } from '../types';
 import { calculatePlantSummary, calculateEntry } from '../lib/calculations';
 import { KPICard } from './KPICard';
+import { InvoiceModal } from './InvoiceModal';
 
 interface DashboardViewProps {
   entries: ProductionEntry[];
@@ -68,6 +69,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Local state for modals directly on dashboard
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [paymentModalOrder, setPaymentModalOrder] = useState<SalesOrder | null>(null);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<SalesOrder | null>(null);
 
   // New Sale Form State
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -426,6 +428,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setPaymentMode('cash');
     setSaleNote('');
     setIsSaleModalOpen(false);
+    setSelectedInvoiceOrder(newOrder);
   };
 
   const handleSubmitPayment = (e: React.FormEvent) => {
@@ -1554,20 +1557,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         )}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        {isDue ? (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
                           <button
+                            type="button"
                             className="btn btn-secondary btn-sm"
-                            style={{ padding: '3px 10px', fontSize: '11.5px', color: '#7C3AED', background: '#F5F3FF', borderColor: '#DDD6FE' }}
-                            onClick={() => handleOpenPaymentModal(order)}
+                            style={{
+                              padding: '3px 8px',
+                              fontSize: '11px',
+                              color: '#1E293B',
+                              background: '#F8FAFC',
+                              borderColor: '#CBD5E1',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}
+                            onClick={() => setSelectedInvoiceOrder(order)}
+                            title="View & Print Official Sales Invoice"
                           >
-                            <CheckCircle2 size={12} />
-                            <span>Collect</span>
+                            <FileText size={11} color="#7C3AED" />
+                            <span>Invoice</span>
                           </button>
-                        ) : (
-                          <span style={{ fontSize: '11.5px', color: '#10B981', fontWeight: 600 }}>
-                            Settled
-                          </span>
-                        )}
+
+                          {isDue ? (
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '3px 10px', fontSize: '11.5px', color: '#7C3AED', background: '#F5F3FF', borderColor: '#DDD6FE' }}
+                              onClick={() => handleOpenPaymentModal(order)}
+                            >
+                              <CheckCircle2 size={12} />
+                              <span>Collect</span>
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '11.5px', color: '#10B981', fontWeight: 600 }}>
+                              Settled
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -2507,6 +2532,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <th>Rate / Brick</th>
                         <th>Total Bill</th>
                         <th>Status</th>
+                        <th style={{ textAlign: 'right' }}>Invoice</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2527,11 +2553,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             {order.paymentStatus === 'partial' && <span className="badge badge-warn">PARTIAL</span>}
                             {order.paymentStatus === 'due' && <span className="badge badge-bad">DUE</span>}
                           </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '3px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                              onClick={() => {
+                                setDashboardModal(null);
+                                setSelectedInvoiceOrder(order);
+                              }}
+                            >
+                              <FileText size={11} color="#7C3AED" />
+                              <span>Invoice</span>
+                            </button>
+                          </td>
                         </tr>
                       ))}
                       {salesOrders.length === 0 && (
                         <tr>
-                          <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#94A3B8' }}>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: '#94A3B8' }}>
                             No customer sales orders logged yet.
                           </td>
                         </tr>
@@ -2631,6 +2671,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
         </div>
+      )}
+
+      {/* Official Sales Invoice & Dispatch Receipt Modal */}
+      {selectedInvoiceOrder && (
+        <InvoiceModal
+          order={selectedInvoiceOrder}
+          customerPayments={customerPayments}
+          settings={settings}
+          onClose={() => setSelectedInvoiceOrder(null)}
+          onRecordPayment={handleOpenPaymentModal}
+        />
       )}
     </div>
   );

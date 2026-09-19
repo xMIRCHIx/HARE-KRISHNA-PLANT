@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { SalesOrder, CustomerPayment, Settings, PaymentMode, PaymentStatus } from '../types';
 import { KPICard } from './KPICard';
+import { InvoiceModal } from './InvoiceModal';
 
 interface SalesViewProps {
   salesOrders: SalesOrder[];
@@ -43,6 +44,7 @@ export const SalesView: React.FC<SalesViewProps> = ({
   const [modeFilter, setModeFilter] = useState<'all' | PaymentMode | 'credit'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [paymentModalOrder, setPaymentModalOrder] = useState<SalesOrder | null>(null);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<SalesOrder | null>(null);
   const [drilldownModal, setDrilldownModal] = useState<'volume' | 'billed' | 'cash' | 'dues' | null>(null);
   const [drilldownSearch, setDrilldownSearch] = useState('');
 
@@ -350,6 +352,7 @@ export const SalesView: React.FC<SalesViewProps> = ({
     setPaymentMode('cash');
     setSaleNote('');
     setIsAddModalOpen(false);
+    setSelectedInvoiceOrder(newOrder);
   };
 
   const handleOpenPaymentModal = (order: SalesOrder) => {
@@ -904,6 +907,27 @@ export const SalesView: React.FC<SalesViewProps> = ({
 
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          style={{
+                            padding: '4px 9px',
+                            fontSize: '11.5px',
+                            borderRadius: '6px',
+                            color: '#1E293B',
+                            background: '#F8FAFC',
+                            borderColor: '#CBD5E1',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          onClick={() => setSelectedInvoiceOrder(order)}
+                          title="View & Print Official Sales Invoice / Dispatch Challan"
+                        >
+                          <FileText size={12} color="#7C3AED" />
+                          <span>Invoice</span>
+                        </button>
+
                         {isDue && (
                           <button
                             type="button"
@@ -1773,6 +1797,17 @@ export const SalesView: React.FC<SalesViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Official Sales Invoice & Dispatch Receipt Modal */}
+      {selectedInvoiceOrder && (
+        <InvoiceModal
+          order={selectedInvoiceOrder}
+          customerPayments={customerPayments}
+          settings={settings}
+          onClose={() => setSelectedInvoiceOrder(null)}
+          onRecordPayment={handleOpenPaymentModal}
+        />
       )}
     </div>
   );
