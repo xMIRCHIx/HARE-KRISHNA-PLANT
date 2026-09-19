@@ -30,12 +30,12 @@ import {
   PlantSummary,
   SalesOrder,
   CustomerPayment,
-  PaymentMode,
-  PaymentStatus
+  PaymentMode
 } from '../types';
 import { calculatePlantSummary, calculateEntry } from '../lib/calculations';
 import { KPICard } from './KPICard';
 import { InvoiceModal } from './InvoiceModal';
+import { RecordSaleModal } from './RecordSaleModal';
 
 interface DashboardViewProps {
   entries: ProductionEntry[];
@@ -72,17 +72,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [paymentModalOrder, setPaymentModalOrder] = useState<SalesOrder | null>(null);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<SalesOrder | null>(null);
-
-  // New Sale Form State
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [siteLocation, setSiteLocation] = useState('');
-  const [quantity, setQuantity] = useState<number>(5000);
-  const [rate, setRate] = useState<number>(settings.defaultSalePrice || 4.00);
-  const [initialPaid, setInitialPaid] = useState<number>(0);
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
-  const [saleNote, setSaleNote] = useState('');
 
   // Receive Payment Form State
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
@@ -367,73 +356,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     } else if (onNavigateToSales) {
       onNavigateToSales();
     }
-  };
-
-  const handleCreateSale = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customerName.trim()) {
-      alert('Please enter customer name');
-      return;
-    }
-    if (quantity <= 0) {
-      alert('Please enter a valid brick quantity');
-      return;
-    }
-
-    const bill = quantity * rate;
-    const paid = Math.min(Math.max(initialPaid, 0), bill);
-    const due = bill - paid;
-
-    let status: PaymentStatus = 'due';
-    if (due <= 0) {
-      status = 'paid';
-    } else if (paid > 0) {
-      status = 'partial';
-    }
-
-    const newOrder: SalesOrder = {
-      id: `sale-${Date.now()}`,
-      date,
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim() || undefined,
-      siteLocation: siteLocation.trim() || undefined,
-      quantity,
-      rate,
-      totalAmount: bill,
-      paidAmount: paid,
-      balanceDue: due,
-      paymentStatus: status,
-      paymentMode: paid > 0 ? paymentMode : undefined,
-      note: saleNote.trim() || undefined
-    };
-
-    let initialPaymentReceipt: CustomerPayment | undefined;
-    if (paid > 0) {
-      initialPaymentReceipt = {
-        id: `pay-${Date.now()}`,
-        orderId: newOrder.id,
-        date,
-        customerName: newOrder.customerName,
-        amount: paid,
-        paymentMode,
-        note: `Initial advance payment at order booking (${paymentMode.toUpperCase()})`
-      };
-    }
-
-    if (onAddSalesOrder) {
-      onAddSalesOrder(newOrder, initialPaymentReceipt);
-    }
-
-    // Reset & close
-    setCustomerName('');
-    setCustomerPhone('');
-    setSiteLocation('');
-    setQuantity(5000);
-    setInitialPaid(0);
-    setPaymentMode('cash');
-    setSaleNote('');
-    setIsSaleModalOpen(false);
-    setSelectedInvoiceOrder(newOrder);
   };
 
   const handleSubmitPayment = (e: React.FormEvent) => {
@@ -1658,242 +1580,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </div>
 
-      {/* MODAL 1: Record Brick Sale */}
-      {isSaleModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.55)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px'
-          }}
-          onClick={() => setIsSaleModalOpen(false)}
-        >
-          <div
-            className="hkb-card"
-            style={{
-              width: '100%',
-              maxWidth: '520px',
-              padding: '24px',
-              background: '#FFFFFF',
-              boxShadow: '0 20px 48px rgba(15, 23, 42, 0.2)'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>
-                  Record Customer Brick Sale
-                </h3>
-                <p style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                  Log order dispatch and advance / credit amount
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSaleModalOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSale} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div className="responsive-form-duo">
-                <div className="form-group">
-                  <label className="form-label">Order Date</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={date}
-                    onChange={e => setDate(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Customer Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Ramesh Thekedar"
-                    value={customerName}
-                    onChange={e => setCustomerName(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              <div className="responsive-form-duo">
-                <div className="form-group">
-                  <label className="form-label">Customer Phone</label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    placeholder="e.g. 9876543210"
-                    value={customerPhone}
-                    onChange={e => setCustomerPhone(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Delivery Site / Location</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Sector 14, Rohtak"
-                    value={siteLocation}
-                    onChange={e => setSiteLocation(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="responsive-form-duo">
-                <div className="form-group">
-                  <label className="form-label">Bricks Sold (Pieces) *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input tabular-nums"
-                    value={quantity}
-                    onChange={e => setQuantity(Number(e.target.value))}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Rate / Brick (₹) *</label>
-                  <input
-                    type="number"
-                    step="0.05"
-                    min="0"
-                    className="form-input tabular-nums"
-                    value={rate}
-                    onChange={e => setRate(Number(e.target.value))}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Calculated Total Bill Box */}
-              <div
-                style={{
-                  padding: '12px 16px',
-                  background: '#F8FAFC',
-                  borderRadius: '10px',
-                  border: '1px solid #E2E8F0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <div>
-                  <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>
-                    Total Bill Amount
-                  </span>
-                  <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A' }}>
-                    ₹{(quantity * rate).toLocaleString('en-IN')}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>
-                    Estimated Outstanding Due
-                  </span>
-                  <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: Math.max((quantity * rate) - initialPaid, 0) > 0 ? '#DC2626' : '#059669' }}>
-                    ₹{Math.max((quantity * rate) - initialPaid, 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Advance / Payment Received (₹)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max={quantity * rate}
-                  className="form-input tabular-nums"
-                  value={initialPaid}
-                  onChange={e => setInitialPaid(Number(e.target.value))}
-                  placeholder="₹ 0 if on full credit / udhaar"
-                />
-              </div>
-
-              {/* Payment Mode Selector */}
-              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <label className="form-label" style={{ margin: 0 }}>
-                    Payment Mode {initialPaid > 0 ? '(Received Via)' : '(If Advance Paid)'}
-                  </label>
-                  {initialPaid === 0 && (
-                    <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
-                      Logged as Credit until advance is entered
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                  {PAYMENT_OPTIONS.map(opt => {
-                    const isSelected = paymentMode === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setPaymentMode(opt.id)}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '10px 4px',
-                          borderRadius: '10px',
-                          border: isSelected ? `2px solid ${opt.color}` : '1.5px solid #E2E8F0',
-                          background: isSelected ? opt.bg : '#FAFAFA',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                          gap: '4px',
-                          boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
-                        }}
-                      >
-                        <div style={{ color: isSelected ? opt.color : '#64748B' }}>
-                          {opt.icon}
-                        </div>
-                        <span style={{ fontSize: '11.5px', fontWeight: 700, color: isSelected ? opt.color : '#334155' }}>
-                          {opt.label}
-                        </span>
-                        <span style={{ fontSize: '9.5px', color: isSelected ? opt.color : '#94A3B8', opacity: isSelected ? 0.95 : 0.8 }}>
-                          {opt.sub}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Remarks / Vehicle Number</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Loaded in Truck HR-02-AB-1234, UTR / Cheque Ref..."
-                  value={saleNote}
-                  onChange={e => setSaleNote(e.target.value)}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsSaleModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Sale Order
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* MODAL 1: Record Customer Brick Sale */}
+      {onAddSalesOrder && (
+        <RecordSaleModal
+          isOpen={isSaleModalOpen}
+          onClose={() => setIsSaleModalOpen(false)}
+          settings={settings}
+          onAddSalesOrder={onAddSalesOrder}
+        />
       )}
 
       {/* MODAL 2: Receive Customer Payment */}

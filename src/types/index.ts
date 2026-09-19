@@ -54,7 +54,7 @@ export interface ProductionEntry {
 }
 
 export type PaymentStatus = 'paid' | 'partial' | 'due';
-export type PaymentMode = 'cash' | 'upi' | 'bank_transfer' | 'cheque';
+export type PaymentMode = 'cash' | 'upi' | 'bank_transfer' | 'cheque' | 'other';
 
 export interface SalesOrder {
   id: string;

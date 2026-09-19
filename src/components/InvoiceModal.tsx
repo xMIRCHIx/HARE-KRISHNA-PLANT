@@ -8,9 +8,9 @@ import {
   Phone,
   MapPin,
   Banknote,
-  FileText,
   Copy,
-  Check
+  Check,
+  ArrowLeft
 } from 'lucide-react';
 import { SalesOrder, CustomerPayment, Settings, PaymentMode } from '../types';
 
@@ -99,14 +99,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       `👤 *Customer:* ${order.customerName}\n` +
       `🧱 *Product:* High-Strength Fly Ash Bricks (9" x 4" x 3")\n` +
       `📦 *Quantity:* ${order.quantity.toLocaleString('en-IN')} pcs\n` +
-      `💰 *Rate:* ₹${order.rate.toFixed(2)} per brick\n` +
-      `💵 *Total Bill:* ₹${order.totalAmount.toLocaleString('en-IN')}\n` +
-      `✅ *Amount Paid:* ₹${order.paidAmount.toLocaleString('en-IN')}\n` +
-      `⚠️ *Remaining Due:* ₹${order.balanceDue.toLocaleString('en-IN')}\n` +
-      `📌 *Status:* ${isSettled ? 'FULLY SETTLED' : isPartial ? 'PARTIALLY PAID' : 'PENDING DUE'}\n` +
-      `📍 *Delivery Site:* ${order.siteLocation || 'Direct Yard Pickup'}\n\n` +
-      `_Thank you for choosing Hare Krishna Bricks!_\n` +
-      `_Plant Contact: +91 93404 11838 | Ambikapur, CG_`
+      `💰 *Rate:* ₹${order.rate.toFixed(2)} / brick\n` +
+      `--------------------------------\n` +
+      `💵 *Gross Total:* ₹${order.totalAmount.toLocaleString('en-IN')}\n` +
+      `✅ *Paid Amount:* ₹${order.paidAmount.toLocaleString('en-IN')}\n` +
+      `⚠️ *Balance Due:* ₹${order.balanceDue.toLocaleString('en-IN')}\n` +
+      `📌 *Status:* ${isSettled ? 'FULLY SETTLED' : isPartial ? 'PARTIAL PAYMENT' : 'PAYMENT DUE'}\n` +
+      `📍 *Delivery Site:* ${order.siteLocation || 'Plant Yard Direct Loading'}\n\n` +
+      `_Official invoice issued by Hare Krishna Bricks._\n` +
+      `_Contact: +91 93404 11838 | Ambikapur, Chhattisgarh_`
     );
     const phone = order.customerPhone ? order.customerPhone.replace(/[^0-9]/g, '') : '';
     const url = phone ? `https://wa.me/91${phone}?text=${text}` : `https://wa.me/?text=${text}`;
@@ -115,142 +116,173 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
   return (
     <div
-      className="modal-overlay invoice-modal-overlay"
-      onClick={e => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      className="standalone-invoice-page no-print-bg"
       style={{
-        zIndex: 2000,
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        backdropFilter: 'blur(6px)',
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 99999,
+        backgroundColor: '#0F172A',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        overflowY: 'auto'
+        flexDirection: 'column',
+        overflowY: 'auto',
+        overflowX: 'hidden'
       }}
     >
+      {/* Standalone Full-Width Sticky Top Header Bar */}
+      <div
+        className="invoice-actions-bar no-print"
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#1E293B',
+          borderBottom: '1px solid #334155',
+          padding: '12px 24px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+          width: '100%',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              borderRadius: '8px',
+              background: '#334155',
+              border: '1px solid #475569',
+              color: '#F8FAFC',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 700,
+              transition: 'background 0.15s ease'
+            }}
+          >
+            <ArrowLeft size={16} />
+            <span>Back to Plant ERP</span>
+          </button>
+
+          <div style={{ height: '24px', width: '1px', background: '#334155' }} />
+
+          <div>
+            <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', margin: 0, letterSpacing: '-0.01em' }}>
+              Sales Invoice & Dispatch Challan
+            </h4>
+            <span style={{ fontSize: '11.5px', color: '#94A3B8' }}>
+              Invoice {invoiceNumber} • {order.customerName}
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {onRecordPayment && order.balanceDue > 0 && (
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              onClick={() => {
+                onClose();
+                onRecordPayment(order);
+              }}
+              style={{ padding: '7px 14px', fontSize: '12px' }}
+            >
+              <Banknote size={14} />
+              <span>Record Payment</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={handleCopySummary}
+            title="Copy invoice summary to clipboard"
+            style={{
+              padding: '7px 14px',
+              fontSize: '12px',
+              background: '#334155',
+              color: '#F8FAFC',
+              borderColor: '#475569'
+            }}
+          >
+            {copied ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+            <span>{copied ? 'Copied!' : 'Copy Bill'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={handleWhatsAppShare}
+            title="Share invoice via WhatsApp"
+            style={{
+              padding: '7px 14px',
+              fontSize: '12px',
+              color: '#FFFFFF',
+              borderColor: '#059669',
+              background: '#059669'
+            }}
+          >
+            <Share2 size={14} />
+            <span>Share WhatsApp</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={handlePrint}
+            title="Print or Save as PDF"
+            style={{
+              padding: '7px 16px',
+              fontSize: '12px',
+              background: '#6366F1',
+              color: '#FFFFFF',
+              borderColor: '#6366F1',
+              fontWeight: 700
+            }}
+          >
+            <Printer size={14} />
+            <span>Print / Save PDF</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#334155',
+              color: '#94A3B8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Close Invoice View"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+
       <div
         className="invoice-container-wrapper"
         style={{
           width: '100%',
-          maxWidth: '840px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '14px',
-          margin: 'auto'
+          maxWidth: '860px',
+          margin: '28px auto 60px',
+          padding: '0 16px'
         }}
       >
-        {/* Floating Action Header (Hidden during Print) */}
-        <div
-          className="invoice-actions-bar no-print"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#FFFFFF',
-            borderRadius: '12px',
-            padding: '12px 18px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-            border: '1px solid #E2E8F0'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: '#F5F3FF',
-                color: '#7C3AED',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <FileText size={17} />
-            </span>
-            <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
-                Sales Invoice & Dispatch Challan
-              </h4>
-              <span style={{ fontSize: '11.5px', color: '#64748B' }}>
-                Order #{order.id} • {order.customerName}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {onRecordPayment && order.balanceDue > 0 && (
-              <button
-                type="button"
-                className="btn btn-sm btn-primary"
-                onClick={() => {
-                  onClose();
-                  onRecordPayment(order);
-                }}
-                style={{ padding: '6px 12px', fontSize: '12px' }}
-              >
-                <Banknote size={13} />
-                <span>Record Payment</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              onClick={handleCopySummary}
-              title="Copy invoice summary to clipboard"
-              style={{ padding: '6px 12px', fontSize: '12px' }}
-            >
-              {copied ? <Check size={13} color="#059669" /> : <Copy size={13} />}
-              <span>{copied ? 'Copied!' : 'Copy'}</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              onClick={handleWhatsAppShare}
-              title="Share invoice via WhatsApp"
-              style={{ padding: '6px 12px', fontSize: '12px', color: '#059669', borderColor: '#A7F3D0', background: '#ECFDF5' }}
-            >
-              <Share2 size={13} />
-              <span>WhatsApp</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-sm btn-primary"
-              onClick={handlePrint}
-              title="Print or Save as PDF"
-              style={{ padding: '6px 14px', fontSize: '12px', background: '#0F172A', borderColor: '#0F172A' }}
-            >
-              <Printer size={13} />
-              <span>Print / PDF</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                border: 'none',
-                background: '#F1F5F9',
-                color: '#64748B',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              title="Close"
-            >
-              <X size={17} />
-            </button>
-          </div>
-        </div>
-
         {/* Printable Official Tax Invoice Document Card */}
         <div
           ref={invoiceRef}
