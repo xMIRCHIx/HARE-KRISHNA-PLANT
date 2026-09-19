@@ -164,7 +164,7 @@ export const SalesView: React.FC<SalesViewProps> = ({
             }}
           >
             <Clock size={11} />
-            <span>Credit / Udhaar</span>
+            <span>Credit Balance</span>
           </span>
         );
     }
@@ -490,37 +490,37 @@ export const SalesView: React.FC<SalesViewProps> = ({
         />
 
         <KPICard
-          title="Total Sales Billed"
-          value={totalBilledRevenue}
-          prefix="₹"
-          decimals={0}
-          theme="amber"
-          subtitle={`Average rate: ₹${settings.defaultSalePrice.toFixed(2)}/brick`}
-          badge={{
-            text: 'Gross Billed',
-            type: 'warn'
-          }}
-          icon={<IndianRupee size={18} />}
-          onClick={() => {
-            setDrilldownModal('billed');
-            setDrilldownSearch('');
-          }}
-        />
-
-        <KPICard
-          title="Total Cash Received"
+          title="Current Realized Revenue"
           value={totalPaidReceived}
           prefix="₹"
           decimals={0}
           theme="green"
-          subtitle={`Collection rate: ${totalBilledRevenue > 0 ? Math.round((totalPaidReceived / totalBilledRevenue) * 100) : 100}%`}
+          subtitle={`Actual collected in hand (${totalBilledRevenue > 0 ? Math.round((totalPaidReceived / totalBilledRevenue) * 100) : 100}% of gross)`}
           badge={{
-            text: 'Cash Collected',
+            text: 'Cash & Online Inflow',
             type: 'good'
           }}
           icon={<CheckCircle2 size={18} />}
           onClick={() => {
             setDrilldownModal('cash');
+            setDrilldownSearch('');
+          }}
+        />
+
+        <KPICard
+          title="Gross Sales Billed"
+          value={totalBilledRevenue}
+          prefix="₹"
+          decimals={0}
+          theme="amber"
+          subtitle="Total invoiced (includes pending dues)"
+          badge={{
+            text: 'Gross Invoiced',
+            type: 'warn'
+          }}
+          icon={<IndianRupee size={18} />}
+          onClick={() => {
+            setDrilldownModal('billed');
             setDrilldownSearch('');
           }}
         />
@@ -565,7 +565,7 @@ export const SalesView: React.FC<SalesViewProps> = ({
             </div>
             <div>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
-                Payment Inflow by Method (कहाँ-कहाँ से कितना पैसा आया)
+                Payment Inflow by Method (Current Realized Collections)
               </span>
               <span style={{ fontSize: '11.5px', color: '#64748B', marginLeft: '8px' }}>
                 Total Collected: <strong style={{ color: '#059669' }}>₹{totalPaidReceived.toLocaleString('en-IN')}</strong> ({allReceiptsList.length} receipt{allReceiptsList.length === 1 ? '' : 's'})
@@ -1426,8 +1426,8 @@ export const SalesView: React.FC<SalesViewProps> = ({
                   <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
                     {drilldownModal === 'volume' && 'Total Bricks Sold — Dispatch Fulfillment Log'}
                     {drilldownModal === 'billed' && 'Gross Invoicing & Sales Ledger Audit'}
-                    {drilldownModal === 'cash' && 'Cash & Payment Inflow Audit (कहाँ से कितना पैसा आया)'}
-                    {drilldownModal === 'dues' && 'Customer Outstanding Dues / Recovery List (उधारी ग्राहक सूची)'}
+                    {drilldownModal === 'cash' && 'Realized Revenue & Payment Inflow Audit'}
+                    {drilldownModal === 'dues' && 'Customer Outstanding Dues & Recovery List'}
                   </h3>
                 </div>
                 <p style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px' }}>

@@ -582,7 +582,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Hexabox 3-Column Command Hub: Hero Revenue, 7-Day Velocity Bar Chart, and Operations Health */}
       <div className="hexabox-top-command-grid">
-        {/* Card 1: Hexabox 3D Violet Hero Card (Revenue & Net Margin) */}
+        {/* Card 1: Hexabox 3D Violet Hero Card (Current Realized Revenue & Gross Billed) */}
         <div
           className="hexabox-hero-card"
           style={{
@@ -598,22 +598,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             setDashboardModal('revenue');
             setDashModalSearch('');
           }}
-          title="Click to view full Revenue & Inflows Breakdown (कहाँ से कितना पैसा आया)"
+          title="Click to view full Realized Revenue & Inflows Breakdown"
         >
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255, 255, 255, 0.85)' }}>
-                    Total Sales Revenue
+                    Current Realized Revenue
                   </span>
                   <span style={{ background: 'rgba(255, 255, 255, 0.2)', fontSize: '10px', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, color: '#FFFFFF', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                    <span>Audit Inflow</span>
+                    <span>Cash & Online Inflow</span>
                     <ArrowUpRight size={10} />
                   </span>
                 </div>
                 <div className="tabular-nums" style={{ fontSize: '34px', fontWeight: 800, marginTop: '6px', letterSpacing: '-0.025em', color: '#FFFFFF' }}>
-                  ₹{displayRevenue.toLocaleString('en-IN')}
+                  ₹{totalCashCollected.toLocaleString('en-IN')}
+                </div>
+                <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.82)', marginTop: '2px' }}>
+                  Actual money received in hand (Cash + UPI + Bank)
                 </div>
               </div>
 
@@ -636,16 +639,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '10px', background: 'rgba(16, 185, 129, 0.25)', color: '#A7F3D0', padding: '3px 9px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 700 }}>
               <TrendingUp size={13} />
               <span>
-                {latestCalc && latestCalc.profitPerBrick >= 0 ? '+' : ''}₹{(latestCalc?.profitPerBrick ?? baselineProfit).toFixed(2)} / brick margin ({latestCalc ? latestCalc.marginPercent.toFixed(1) : baselineMargin.toFixed(1)}%)
+                {displayRevenue > 0 ? `${Math.round((totalCashCollected / displayRevenue) * 100)}% Realized` : '100% Realized'}
+                {latestCalc && ` • ₹${latestCalc.profitPerBrick >= 0 ? '+' : ''}${latestCalc.profitPerBrick.toFixed(2)}/brick margin`}
               </span>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.18)', paddingTop: '12px', marginTop: '14px', fontSize: '11.5px' }}>
-            <span style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
-              Cash In: <strong style={{ color: '#FFFFFF' }}>₹{totalCashCollected.toLocaleString('en-IN')}</strong>
+            <span style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+              Gross Billed: <strong style={{ color: '#FFFFFF' }}>₹{displayRevenue.toLocaleString('en-IN')}</strong>
             </span>
-            <span style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
+            <span style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
               Pending Dues: <strong style={{ color: '#FDE68A' }}>₹{totalOutstandingDues.toLocaleString('en-IN')}</strong>
             </span>
           </div>
@@ -788,7 +792,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Payment Inflow Breakdown Strip by Method (कहाँ-कहाँ से कितना पैसा आया) */}
+      {/* Payment Inflow Breakdown Strip by Method (Cash, UPI & Bank Inflows) */}
       <div
         className="hkb-card"
         style={{
@@ -819,7 +823,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Payment Inflow by Method
               </span>
               <span style={{ fontSize: '12px', color: '#64748B', marginLeft: '6px' }}>
-                (कहाँ-कहाँ से कितना पैसा आया)
+                (Current Realized Collections)
               </span>
             </div>
           </div>
@@ -877,7 +881,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Cash / नकद
+                  Cash Received
                 </div>
                 <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#065F46', marginTop: '1px' }}>
                   ₹{modeTotals.cash.toLocaleString('en-IN')}
@@ -2068,7 +2072,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {dashboardModal === 'profit' && <IndianRupee size={17} />}
                   </span>
                   <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
-                    {dashboardModal === 'revenue' && 'Cash Inflows & Payment Audit (कहाँ से कितना पैसा आया)'}
+                    {dashboardModal === 'revenue' && 'Realized Cash & Online Revenue Audit'}
                     {dashboardModal === 'production' && 'Daily Shift Production Ledger Log'}
                     {dashboardModal === 'stock' && 'Live Yard Inventory & Stock Balance'}
                     {dashboardModal === 'volume' && 'Customer Sales Orders & Dispatch Log'}
@@ -2119,7 +2123,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       cursor: 'pointer'
                     }}
                   >
-                    <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>💵 CASH / नकद</span>
+                    <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>💵 CASH RECEIVED</span>
                     <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#059669' }}>
                       ₹{modeTotals.cash.toLocaleString('en-IN')}
                     </div>

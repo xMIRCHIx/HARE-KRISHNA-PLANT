@@ -386,7 +386,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                 SALES INVOICE
               </h2>
               <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
-                बिक्री चालान व रसीद
+                DISPATCH RECEIPT & CHALLAN
               </span>
 
               <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '11.5px' }}>
@@ -474,7 +474,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   marginBottom: '6px'
                 }}
               >
-                BILLED TO / खरीदार का विवरण
+                BILLED TO / CUSTOMER DETAILS
               </span>
               <div style={{ fontSize: '17px', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
                 {order.customerName}
@@ -510,7 +510,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   marginBottom: '6px'
                 }}
               >
-                DISPATCH & ORDER DETAILS / प्रेषण विवरण
+                DISPATCH & ORDER DETAILS
               </span>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12px', color: '#334155' }}>
@@ -805,7 +805,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                       letterSpacing: '0.04em'
                     }}
                   >
-                    {isSettled ? 'FULLY SETTLED / पूर्ण भुगतान' : isPartial ? 'PARTIAL BALANCE PENDING' : 'PAYMENT DUE / उधारी'}
+                    {isSettled ? 'FULLY SETTLED' : isPartial ? 'PARTIAL BALANCE PENDING' : 'PAYMENT DUE'}
                   </h4>
                   <p
                     style={{

@@ -340,18 +340,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="button"
                 className="btn btn-danger btn-sm"
                 onClick={() => {
-                  if (window.confirm('चेतावनी: क्या आप सच में सारा पुराना डेटा साफ़ (Clear) करना चाहते हैं? इससे सभी दैनिक एंट्री और खर्चे शून्य हो जाएँगे।')) {
+                  if (window.confirm('Warning: Are you sure you want to clear all old plant data? This will reset daily entries and expenses to zero.')) {
                     localStorage.removeItem('hkb_production_entries_v2');
                     localStorage.removeItem('hkb_expenses_v2');
                     localStorage.removeItem('hkb_production_entries_v1');
                     localStorage.removeItem('hkb_expenses_v1');
-                    alert('सारा डेटा साफ़ कर दिया गया है!');
+                    alert('All plant data has been cleared successfully.');
                     onDataReload();
                   }
                 }}
                 style={{ marginTop: '8px' }}
               >
-                <span>Clear All Plant Data (सारा डेटा साफ़ करें)</span>
+                <span>Clear All Plant Data</span>
               </button>
             </div>
 
