@@ -47,7 +47,8 @@ import { SalesView } from './components/SalesView';
 import { InvoicesView } from './components/InvoicesView';
 
 export const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  // Initialize auth synchronously to prevent 1-second login/dashboard flicker
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => getAuthSession());
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [syncStatus, setSyncStatus] = useState<'connected' | 'offline_cached'>('connected');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -64,11 +65,6 @@ export const App: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>(getStoredExpenses);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>(getStoredSalesOrders);
   const [customerPayments, setCustomerPayments] = useState<CustomerPayment[]>(getStoredCustomerPayments);
-
-  // Initialize auth state
-  useEffect(() => {
-    setIsAuthenticated(getAuthSession());
-  }, []);
 
   // Test Supabase connection and pull authoritative cloud data
   useEffect(() => {

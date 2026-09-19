@@ -261,19 +261,20 @@ export const SalesView: React.FC<SalesViewProps> = ({
         order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.customerPhone && order.customerPhone.includes(searchTerm)) ||
         (order.siteLocation && order.siteLocation.toLowerCase().includes(searchTerm.toLowerCase()));
-
       if (!matchesSearch) return false;
 
-      if (statusFilter === 'due') {
-        return order.balanceDue > 0;
-      }
-      if (statusFilter === 'paid') {
-        return order.balanceDue <= 0;
-      }
+      // Status filter
+      if (statusFilter === 'due' && order.balanceDue <= 0) return false;
+      if (statusFilter === 'paid' && order.balanceDue > 0) return false;
 
+      // Mode filter
       if (modeFilter !== 'all') {
+        const relatedPayments = customerPayments.filter(p => p.orderId === order.id);
+        const hasMatchingPayment = relatedPayments.some(p => p.paymentMode === modeFilter);
         const orderMode = getOrderPaymentMode(order);
-        if (orderMode !== modeFilter) return false;
+        if (orderMode !== modeFilter && !hasMatchingPayment) {
+          return false;
+        }
       }
 
       return true;

@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import {
-  Printer,
   X,
   Share2,
   CheckCircle2,
@@ -10,7 +9,9 @@ import {
   Banknote,
   Copy,
   Check,
-  ArrowLeft
+  ArrowLeft,
+  CreditCard,
+  Download
 } from 'lucide-react';
 import { SalesOrder, CustomerPayment, Settings, PaymentMode } from '../types';
 
@@ -34,8 +35,54 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
   if (!order) return null;
 
-  // Filter payments belonging to this order
-  const orderPayments = customerPayments.filter(p => p.orderId === order.id);
+  // Filter payments belonging to this order and sort chronologically
+  const orderPayments = customerPayments
+    .filter(p => p.orderId === order.id)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Unified installments ledger synthesis
+  const totalRecordedFromList = orderPayments.reduce((sum, p) => sum + p.amount, 0);
+
+  interface InvoiceInstallment {
+    id: string;
+    number: number;
+    title: string;
+    date: string;
+    mode: PaymentMode;
+    amount: number;
+    note?: string;
+    isAdvance?: boolean;
+  }
+
+  const installmentsList: InvoiceInstallment[] = [];
+
+  // If order has an initial payment made during creation before subsequent payment receipts
+  if (order.paidAmount > totalRecordedFromList) {
+    const initialAdvance = order.paidAmount - totalRecordedFromList;
+    installmentsList.push({
+      id: `initial-adv-${order.id}`,
+      number: 1,
+      title: 'Advance Booking Deposit',
+      date: order.date,
+      mode: order.paymentMode || 'cash',
+      amount: initialAdvance,
+      note: order.note || 'Initial booking advance received',
+      isAdvance: true
+    });
+  }
+
+  orderPayments.forEach((p) => {
+    installmentsList.push({
+      id: p.id,
+      number: installmentsList.length + 1,
+      title: installmentsList.length === 0 ? 'Initial Payment' : `Installment #${installmentsList.length + 1}`,
+      date: p.date,
+      mode: p.paymentMode || 'cash',
+      amount: p.amount,
+      note: p.note,
+      isAdvance: false
+    });
+  });
 
   // Generate formal invoice / challan number
   const invoiceNumber = `INV-${order.id.replace(/^sale-/, '').slice(-6).toUpperCase() || '874715'}`;
@@ -61,6 +108,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         return 'Net Banking (NEFT/RTGS)';
       case 'cheque':
         return 'Bank Cheque';
+      case 'other':
+        return 'Other Mode';
       case 'cash':
       default:
         return 'Cash';
@@ -72,6 +121,12 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   };
 
   const handleCopySummary = () => {
+    let installmentsSummary = '';
+    if (installmentsList.length > 0) {
+      installmentsSummary = '\nPayment & Installment Breakdown:\n' +
+        installmentsList.map(i => `• ${i.date} (${paymentModeLabel(i.mode)}): ₹${i.amount.toLocaleString('en-IN')}${i.note ? ` [${i.note}]` : ''}`).join('\n') + '\n';
+    }
+
     const text = `*HARE KRISHNA BRICKS — SALES INVOICE*\n` +
       `Invoice No: ${invoiceNumber}\n` +
       `Date: ${order.date}\n` +
@@ -79,7 +134,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       `Quantity: ${order.quantity.toLocaleString('en-IN')} Fly Ash Bricks\n` +
       `Rate: ₹${order.rate.toFixed(2)}/brick\n` +
       `Total Bill: ₹${order.totalAmount.toLocaleString('en-IN')}\n` +
-      `Paid Amount: ₹${order.paidAmount.toLocaleString('en-IN')}\n` +
+      installmentsSummary +
+      `Total Paid: ₹${order.paidAmount.toLocaleString('en-IN')}\n` +
       `Balance Due: ₹${order.balanceDue.toLocaleString('en-IN')}\n` +
       `Status: ${isSettled ? 'FULLY SETTLED' : isPartial ? 'PARTIAL PAYMENT' : 'PAYMENT DUE'}\n` +
       `Site: ${order.siteLocation || 'Plant Yard'}\n` +
@@ -92,6 +148,12 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   };
 
   const handleWhatsAppShare = () => {
+    let installmentsSection = '';
+    if (installmentsList.length > 0) {
+      installmentsSection = `💳 *Installment Breakdown:*\n` +
+        installmentsList.map(i => `• ${i.date} (${paymentModeLabel(i.mode)}): ₹${i.amount.toLocaleString('en-IN')}`).join('\n') + '\n--------------------------------\n';
+    }
+
     const text = encodeURIComponent(
       `*HARE KRISHNA BRICKS — SALES INVOICE & DISPATCH RECEIPT*\n\n` +
       `📄 *Invoice No:* ${invoiceNumber}\n` +
@@ -102,8 +164,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       `💰 *Rate:* ₹${order.rate.toFixed(2)} / brick\n` +
       `--------------------------------\n` +
       `💵 *Gross Total:* ₹${order.totalAmount.toLocaleString('en-IN')}\n` +
-      `✅ *Paid Amount:* ₹${order.paidAmount.toLocaleString('en-IN')}\n` +
-      `⚠️ *Balance Due:* ₹${order.balanceDue.toLocaleString('en-IN')}\n` +
+      installmentsSection +
+      `✅ *Total Collected:* ₹${order.paidAmount.toLocaleString('en-IN')}\n` +
+      `⚠️ *Remaining Due:* ₹${order.balanceDue.toLocaleString('en-IN')}\n` +
       `📌 *Status:* ${isSettled ? 'FULLY SETTLED' : isPartial ? 'PARTIAL PAYMENT' : 'PAYMENT DUE'}\n` +
       `📍 *Delivery Site:* ${order.siteLocation || 'Plant Yard Direct Loading'}\n\n` +
       `_Official invoice issued by Hare Krishna Bricks._\n` +
@@ -238,18 +301,21 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
             type="button"
             className="btn btn-sm"
             onClick={handlePrint}
-            title="Print or Save as PDF"
+            title="Download Invoice as PDF or Print"
             style={{
               padding: '7px 16px',
               fontSize: '12px',
               background: '#6366F1',
               color: '#FFFFFF',
               borderColor: '#6366F1',
-              fontWeight: 700
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}
           >
-            <Printer size={14} />
-            <span>Print / Save PDF</span>
+            <Download size={14} />
+            <span>Download / Print PDF</span>
           </button>
 
           <button
@@ -653,6 +719,45 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                       Hydraulically compacted cement, fly ash, and stone dust composite bricks.
                       Superior compressive strength with uniform sharp edges and low water absorption.
                     </p>
+
+                    {/* Installment breakdown inside description as requested */}
+                    {installmentsList.length > 0 && (
+                      <div
+                        style={{
+                          marginTop: '10px',
+                          padding: '8px 12px',
+                          background: '#F8FAFC',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          color: '#334155'
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: '#475569', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '9.5px' }}>
+                          Payment & Installment Schedule / भुगतान विवरण:
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          {installmentsList.map((inst) => (
+                            <div key={inst.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>
+                                <strong style={{ color: '#0F172A' }}>
+                                  {new Date(inst.date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </strong>
+                                {' — '}{inst.title} ({paymentModeLabel(inst.mode)})
+                                {inst.note ? ` • ${inst.note}` : ''}
+                              </span>
+                              <strong className="tabular-nums" style={{ color: '#059669', marginLeft: '8px' }}>
+                                ₹{inst.amount.toLocaleString('en-IN')}
+                              </strong>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ marginTop: '6px', paddingTop: '4px', borderTop: '1px dashed #CBD5E1', display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: '#64748B' }}>
+                          <span>Total Paid ({installmentsList.length} receipt{installmentsList.length > 1 ? 's' : ''}): <strong>₹{order.paidAmount.toLocaleString('en-IN')}</strong></span>
+                          <span>Balance Due: <strong style={{ color: order.balanceDue > 0 ? '#DC2626' : '#059669' }}>₹{order.balanceDue.toLocaleString('en-IN')}</strong></span>
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td
                     style={{
@@ -711,85 +816,118 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
             </table>
           </div>
 
-          {/* TRANSACTION PAYMENT DETAILS STRIP (Just like image) */}
+          {/* PAYMENT INSTALLMENTS & JAMA RECEIPTS LEDGER TABLE */}
           <div
             style={{
-              background: '#F8FAFC',
+              background: '#FFFFFF',
               border: '1.5px solid #E2E8F0',
               borderRadius: '12px',
-              padding: '14px 18px',
-              marginBottom: '22px'
+              padding: '14px 16px',
+              marginBottom: '22px',
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Payment Mode:</span>
-                <span
-                  style={{
-                    background:
-                      order.paymentMode === 'cash'
-                        ? '#ECFDF5'
-                        : order.paymentMode === 'upi'
-                        ? '#F5F3FF'
-                        : order.paymentMode === 'bank_transfer'
-                        ? '#EFF6FF'
-                        : '#FFFBEB',
-                    color:
-                      order.paymentMode === 'cash'
-                        ? '#059669'
-                        : order.paymentMode === 'upi'
-                        ? '#7C3AED'
-                        : order.paymentMode === 'bank_transfer'
-                        ? '#2563EB'
-                        : '#D97706',
-                    border: '1px solid currentColor',
-                    padding: '2px 8px',
-                    borderRadius: '6px',
-                    fontSize: '11px',
-                    fontWeight: 700
-                  }}
-                >
-                  {paymentModeLabel(order.paymentMode)}
+                <CreditCard size={16} color="#7C3AED" />
+                <span style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Payment Installments & Jama Receipts Ledger / भुगतान व किस्त विवरण
                 </span>
               </div>
 
-              <div className="tabular-nums" style={{ fontSize: '15px', fontWeight: 800, color: '#059669' }}>
-                ₹{order.paidAmount.toLocaleString('en-IN')}.00 Collected
+              <div className="tabular-nums" style={{ fontSize: '14px', fontWeight: 800, color: '#059669' }}>
+                Total Paid: ₹{order.paidAmount.toLocaleString('en-IN')}.00
               </div>
             </div>
 
-            <p style={{ fontSize: '11.5px', color: '#475569', marginTop: '6px', lineHeight: 1.45 }}>
-              Payment recorded on <strong>{formattedDate}</strong>.
-              {order.paidAmount > 0 ? (
-                <>
-                  {' '}Advance / payment received: <strong>₹{order.paidAmount.toLocaleString('en-IN')}</strong>.
-                  {order.balanceDue > 0
-                    ? ` Remaining balance to be cleared: ₹${order.balanceDue.toLocaleString('en-IN')}.`
-                    : ' Entire order balance has been fully settled.'}
-                </>
-              ) : (
-                ' No initial payment recorded; entire order billed on credit/udhaar.'
-              )}
-            </p>
-
-            {order.note && (
-              <div style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic', marginTop: '4px' }}>
-                Note: {order.note}
+            {installmentsList.length === 0 ? (
+              <div style={{ padding: '12px', textAlign: 'center', color: '#94A3B8', fontSize: '12px', background: '#F8FAFC', borderRadius: '8px' }}>
+                No payments received yet. Entire order billed on credit (उधार / बकाया).
               </div>
-            )}
-
-            {/* If there are multiple individual payment receipts logged */}
-            {orderPayments.length > 0 && (
-              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
-                  Recorded Payment Receipts:
-                </span>
-                {orderPayments.map((p, i) => (
-                  <div key={p.id || i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#334155' }}>
-                    <span>• {p.date} via {paymentModeLabel(p.paymentMode)} {p.note ? `(${p.note})` : ''}</span>
-                    <strong style={{ color: '#059669' }}>₹{p.amount.toLocaleString('en-IN')}</strong>
-                  </div>
-                ))}
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', color: '#475569' }}>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>#</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>DATE (दिनांक)</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>INSTALLMENT / STAGE</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>MODE (माध्यम)</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>VEHICLE / NOTE / REF</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, fontSize: '10px' }}>AMOUNT (₹)</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 700, fontSize: '10px' }}>RECEIPT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {installmentsList.map((inst, idx) => (
+                      <tr
+                        key={inst.id}
+                        style={{
+                          borderBottom: idx < installmentsList.length - 1 ? '1px solid #F1F5F9' : 'none',
+                          background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA'
+                        }}
+                      >
+                        <td style={{ padding: '8px 10px', fontWeight: 700, color: '#64748B' }}>{inst.number}</td>
+                        <td style={{ padding: '8px 10px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                          {new Date(inst.date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </td>
+                        <td style={{ padding: '8px 10px', fontWeight: 600, color: '#334155' }}>
+                          {inst.title}
+                        </td>
+                        <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                          <span
+                            style={{
+                              background:
+                                inst.mode === 'cash'
+                                  ? '#ECFDF5'
+                                  : inst.mode === 'upi'
+                                  ? '#F5F3FF'
+                                  : inst.mode === 'bank_transfer'
+                                  ? '#EFF6FF'
+                                  : '#FFFBEB',
+                              color:
+                                inst.mode === 'cash'
+                                  ? '#059669'
+                                  : inst.mode === 'upi'
+                                  ? '#7C3AED'
+                                  : inst.mode === 'bank_transfer'
+                                  ? '#2563EB'
+                                  : '#D97706',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              fontWeight: 700
+                            }}
+                          >
+                            {paymentModeLabel(inst.mode)}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 10px', color: '#64748B', maxWidth: '200px' }}>
+                          {inst.note || '—'}
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: '#059669', whiteSpace: 'nowrap' }}>
+                          ₹{inst.amount.toLocaleString('en-IN')}.00
+                        </td>
+                        <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '10px', color: '#059669', fontWeight: 700, background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '1px 6px', borderRadius: '4px' }}>
+                            ✓ Received
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: '#F8FAFC', borderTop: '1.5px solid #E2E8F0', fontWeight: 800 }}>
+                      <td colSpan={5} style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontSize: '11px' }}>
+                        Total Realized Collections:
+                      </td>
+                      <td className="tabular-nums" style={{ padding: '8px 10px', textAlign: 'right', color: '#059669', fontSize: '13px' }}>
+                        ₹{order.paidAmount.toLocaleString('en-IN')}.00
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             )}
           </div>
@@ -872,7 +1010,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
             {/* Right: Calculations Breakdown & Grand Total */}
             <div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
                   <span>Base Brick Value:</span>
                   <span className="tabular-nums" style={{ fontWeight: 600 }}>₹{order.totalAmount.toLocaleString('en-IN')}.00</span>
@@ -883,18 +1021,26 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   <span className="tabular-nums" style={{ fontWeight: 600 }}>Included (₹0.00)</span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
-                  <span>Total Order Bill:</span>
-                  <span className="tabular-nums" style={{ fontWeight: 700, color: '#0F172A' }}>₹{order.totalAmount.toLocaleString('en-IN')}.00</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0F172A', fontWeight: 700, paddingBottom: '3px', borderBottom: '1px dashed #E2E8F0' }}>
+                  <span>Gross Order Bill:</span>
+                  <span className="tabular-nums">₹{order.totalAmount.toLocaleString('en-IN')}.00</span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', paddingTop: '4px', borderTop: '1px dashed #E2E8F0' }}>
-                  <span style={{ fontWeight: 600 }}>Amount Paid in this Receipt:</span>
+                {/* Itemized Installment Deductions */}
+                {installmentsList.map((inst) => (
+                  <div key={inst.id} style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontSize: '11px' }}>
+                    <span>Less {inst.title} ({new Date(inst.date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit' })}):</span>
+                    <span className="tabular-nums" style={{ fontWeight: 700 }}>-₹{inst.amount.toLocaleString('en-IN')}.00</span>
+                  </div>
+                ))}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', paddingTop: '4px', borderTop: '1px solid #E2E8F0' }}>
+                  <span style={{ fontWeight: 700 }}>Total Collected:</span>
                   <span className="tabular-nums" style={{ fontWeight: 800 }}>₹{order.paidAmount.toLocaleString('en-IN')}.00</span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: order.balanceDue > 0 ? '#DC2626' : '#64748B' }}>
-                  <span style={{ fontWeight: 600 }}>Remaining Dues:</span>
+                  <span style={{ fontWeight: 700 }}>Remaining Balance Due:</span>
                   <span className="tabular-nums" style={{ fontWeight: 800 }}>
                     ₹{order.balanceDue.toLocaleString('en-IN')}.00 {isSettled ? '(Fully Settled)' : ''}
                   </span>
