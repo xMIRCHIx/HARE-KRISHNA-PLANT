@@ -85,11 +85,43 @@ export function saveStoredExpenses(expenses: Expense[]): void {
 export function getStoredSalesOrders(): SalesOrder[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SALES_ORDERS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.SALES_ORDERS, JSON.stringify(INITIAL_SALES_ORDERS));
-      return INITIAL_SALES_ORDERS;
+    let orders: SalesOrder[] = raw ? JSON.parse(raw) : INITIAL_SALES_ORDERS;
+
+    // Self-healing: recover any sales order created with a customer payment that was dropped
+    const rawPayments = localStorage.getItem(STORAGE_KEYS.CUSTOMER_PAYMENTS);
+    if (rawPayments) {
+      try {
+        const payments: CustomerPayment[] = JSON.parse(rawPayments);
+        const recovered: SalesOrder[] = [];
+        payments.forEach(p => {
+          if (p.orderId && !orders.some(o => o.id === p.orderId)) {
+            const rate = 4.0;
+            const qty = Math.max(Math.round(p.amount / rate), 500);
+            recovered.push({
+              id: p.orderId,
+              date: p.date,
+              customerName: p.customerName,
+              quantity: qty,
+              rate: rate,
+              totalAmount: p.amount,
+              paidAmount: p.amount,
+              balanceDue: 0,
+              paymentStatus: 'paid',
+              paymentMode: p.paymentMode || 'cash',
+              note: p.note || 'Advance order booking'
+            });
+          }
+        });
+        if (recovered.length > 0) {
+          orders = [...recovered, ...orders];
+          localStorage.setItem(STORAGE_KEYS.SALES_ORDERS, JSON.stringify(orders));
+        }
+      } catch {
+        // ignore JSON parse error in payments
+      }
     }
-    return JSON.parse(raw);
+
+    return orders;
   } catch {
     return INITIAL_SALES_ORDERS;
   }

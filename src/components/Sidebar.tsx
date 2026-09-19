@@ -11,11 +11,12 @@ import {
   CheckCircle2,
   Languages,
   X,
-  IndianRupee
+  IndianRupee,
+  FileText
 } from 'lucide-react';
 import { Language, translations } from '../lib/i18n';
 
-export type ActiveTab = 'dashboard' | 'daily-entry' | 'ledger' | 'sales' | 'expenses' | 'guide' | 'settings';
+export type ActiveTab = 'dashboard' | 'daily-entry' | 'ledger' | 'sales' | 'invoices' | 'expenses' | 'guide' | 'settings';
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -59,6 +60,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       sub: t.salesSub,
       icon: <IndianRupee size={17} />,
       badge: dueCount > 0 ? `${dueCount} Due` : undefined
+    },
+    {
+      id: 'invoices' as ActiveTab,
+      label: language === 'hi' ? 'चालान व बिल' : 'Invoices & Bills',
+      sub: language === 'hi' ? 'प्रिंट, PDF व व्हाट्सऐप' : 'View, PDF & WhatsApp',
+      icon: <FileText size={17} />
     }
   ];
 

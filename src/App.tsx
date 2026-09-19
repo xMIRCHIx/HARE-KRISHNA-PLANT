@@ -13,7 +13,8 @@ import {
   Expense,
   Settings,
   SalesOrder,
-  CustomerPayment
+  CustomerPayment,
+  PaymentStatus
 } from './types';
 import { Language } from './lib/i18n';
 import {
@@ -43,6 +44,7 @@ import {
   fetchAllFromCloud
 } from './lib/supabase';
 import { SalesView } from './components/SalesView';
+import { InvoicesView } from './components/InvoicesView';
 
 export const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -84,12 +86,22 @@ export const App: React.FC = () => {
             saveStoredExpenses(cloudData.expenses);
           }
           if (cloudData.salesOrders && cloudData.salesOrders.length > 0) {
-            setSalesOrders(cloudData.salesOrders);
-            saveStoredSalesOrders(cloudData.salesOrders);
+            setSalesOrders(prev => {
+              const cloudIds = new Set(cloudData.salesOrders!.map(o => o.id));
+              const localOnly = prev.filter(o => !cloudIds.has(o.id));
+              const merged = [...cloudData.salesOrders!, ...localOnly];
+              saveStoredSalesOrders(merged);
+              return merged;
+            });
           }
           if (cloudData.customerPayments && cloudData.customerPayments.length > 0) {
-            setCustomerPayments(cloudData.customerPayments);
-            saveStoredCustomerPayments(cloudData.customerPayments);
+            setCustomerPayments(prev => {
+              const cloudIds = new Set(cloudData.customerPayments!.map(p => p.id));
+              const localOnly = prev.filter(p => !cloudIds.has(p.id));
+              const merged = [...cloudData.customerPayments!, ...localOnly];
+              saveStoredCustomerPayments(merged);
+              return merged;
+            });
           }
         }
       }
@@ -147,48 +159,65 @@ export const App: React.FC = () => {
     deleteExpenseFromCloud(id);
   };
 
-  const handleAddSalesOrder = (order: SalesOrder) => {
-    const updated = [order, ...salesOrders];
-    setSalesOrders(updated);
-    saveStoredSalesOrders(updated);
+  const handleAddSalesOrder = (order: SalesOrder, initialPayment?: CustomerPayment) => {
+    setSalesOrders(prev => {
+      const updated = [order, ...prev.filter(o => o.id !== order.id)];
+      saveStoredSalesOrders(updated);
+      return updated;
+    });
     syncSalesOrderToCloud(order);
+
+    if (initialPayment) {
+      setCustomerPayments(prev => {
+        const updated = [initialPayment, ...prev.filter(p => p.id !== initialPayment.id)];
+        saveStoredCustomerPayments(updated);
+        return updated;
+      });
+      syncPaymentToCloud(initialPayment);
+    }
   };
 
   const handleDeleteSalesOrder = (id: string) => {
-    const updated = salesOrders.filter(o => o.id !== id);
-    setSalesOrders(updated);
-    saveStoredSalesOrders(updated);
+    setSalesOrders(prev => {
+      const updated = prev.filter(o => o.id !== id);
+      saveStoredSalesOrders(updated);
+      return updated;
+    });
     deleteSalesOrderFromCloud(id);
   };
 
   const handleRecordPayment = (payment: CustomerPayment) => {
-    const updatedPayments = [payment, ...customerPayments];
-    setCustomerPayments(updatedPayments);
-    saveStoredCustomerPayments(updatedPayments);
+    setCustomerPayments(prev => {
+      const updated = [payment, ...prev.filter(p => p.id !== payment.id)];
+      saveStoredCustomerPayments(updated);
+      return updated;
+    });
     syncPaymentToCloud(payment);
 
-    let updatedTargetOrder: SalesOrder | null = null;
-    const updatedOrders = salesOrders.map(order => {
-      if (order.id === payment.orderId) {
-        const newPaid = order.paidAmount + payment.amount;
-        const newDue = Math.max(order.totalAmount - newPaid, 0);
-        const updated = {
-          ...order,
-          paidAmount: newPaid,
-          balanceDue: newDue,
-          paymentStatus: newDue <= 0 ? ('paid' as const) : ('partial' as const)
-        };
-        updatedTargetOrder = updated;
-        return updated;
-      }
-      return order;
-    });
+    setSalesOrders(prev => {
+      let updatedTargetOrder: SalesOrder | null = null;
+      const updatedOrders = prev.map(order => {
+        if (order.id === payment.orderId) {
+          const newPaid = order.paidAmount + payment.amount;
+          const newDue = Math.max(order.totalAmount - newPaid, 0);
+          const updated = {
+            ...order,
+            paidAmount: newPaid,
+            balanceDue: newDue,
+            paymentStatus: (newDue <= 0 ? 'paid' : 'partial') as PaymentStatus
+          };
+          updatedTargetOrder = updated;
+          return updated;
+        }
+        return order;
+      });
 
-    setSalesOrders(updatedOrders);
-    saveStoredSalesOrders(updatedOrders);
-    if (updatedTargetOrder) {
-      syncSalesOrderToCloud(updatedTargetOrder);
-    }
+      saveStoredSalesOrders(updatedOrders);
+      if (updatedTargetOrder) {
+        syncSalesOrderToCloud(updatedTargetOrder);
+      }
+      return updatedOrders;
+    });
   };
 
   const handleSaveSettings = (newSettings: Settings) => {
@@ -344,6 +373,7 @@ export const App: React.FC = () => {
               onNavigateToEntry={() => setActiveTab('daily-entry')}
               onNavigateToLedger={() => setActiveTab('ledger')}
               onNavigateToSales={() => setActiveTab('sales')}
+              onNavigateToInvoices={() => setActiveTab('invoices')}
             />
           )}
 
@@ -375,26 +405,17 @@ export const App: React.FC = () => {
               onAddSalesOrder={handleAddSalesOrder}
               onDeleteSalesOrder={handleDeleteSalesOrder}
               onRecordPayment={handleRecordPayment}
+              onNavigateToInvoices={() => setActiveTab('invoices')}
             />
           )}
 
-          {activeTab === 'daily-entry' && (
-            <DailyEntryView
-              entries={entries}
-              expenses={expenses}
+          {activeTab === 'invoices' && (
+            <InvoicesView
+              salesOrders={salesOrders}
+              customerPayments={customerPayments}
               settings={settings}
-              onSaveEntry={handleSaveEntry}
-              onCancel={() => setActiveTab('dashboard')}
-            />
-          )}
-
-          {activeTab === 'ledger' && (
-            <LedgerView
-              entries={entries}
-              expenses={expenses}
-              settings={settings}
-              onDeleteEntry={handleDeleteEntry}
-              onNavigateToEntry={() => setActiveTab('daily-entry')}
+              onNavigateToSales={() => setActiveTab('sales')}
+              onRecordPayment={handleRecordPayment}
             />
           )}
 

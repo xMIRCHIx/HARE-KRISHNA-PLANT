@@ -43,11 +43,12 @@ interface DashboardViewProps {
   settings: Settings;
   salesOrders?: SalesOrder[];
   customerPayments?: CustomerPayment[];
-  onAddSalesOrder?: (order: SalesOrder) => void;
+  onAddSalesOrder?: (order: SalesOrder, initialPayment?: CustomerPayment) => void;
   onRecordPayment?: (payment: CustomerPayment) => void;
   onNavigateToEntry: () => void;
   onNavigateToLedger: () => void;
   onNavigateToSales?: () => void;
+  onNavigateToInvoices?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -60,7 +61,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onRecordPayment,
   onNavigateToEntry,
   onNavigateToLedger,
-  onNavigateToSales
+  onNavigateToSales,
+  onNavigateToInvoices
 }) => {
   const summary: PlantSummary = calculatePlantSummary(entries, expenses, settings);
   const latestEntry = entries[entries.length - 1];
@@ -97,7 +99,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalOutstandingDues = salesOrders.reduce((sum, o) => sum + o.balanceDue, 0);
   const totalBricksSoldInOrders = salesOrders.reduce((sum, o) => sum + o.quantity, 0);
   const totalSalesRevenueFromOrders = salesOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const totalCashCollected = salesOrders.reduce((sum, o) => sum + o.paidAmount, 0);
 
   const displaySoldVolume = totalBricksSoldInOrders > 0 ? totalBricksSoldInOrders : summary.totalSold;
   const displayRevenue = totalSalesRevenueFromOrders > 0 ? totalSalesRevenueFromOrders : summary.totalRevenue;
@@ -153,6 +154,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   allReceiptsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const totalReceiptsInflow = allReceiptsList.reduce((sum, r) => sum + r.amount, 0);
+  const totalCashCollected = Math.max(totalReceiptsInflow, salesOrders.reduce((sum, o) => sum + o.paidAmount, 0));
 
   const modeTotals = {
     cash: allReceiptsList.filter(r => r.paymentMode === 'cash').reduce((sum, r) => sum + r.amount, 0),
@@ -403,12 +407,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       note: saleNote.trim() || undefined
     };
 
-    if (onAddSalesOrder) {
-      onAddSalesOrder(newOrder);
-    }
-
-    if (paid > 0 && onRecordPayment) {
-      onRecordPayment({
+    let initialPaymentReceipt: CustomerPayment | undefined;
+    if (paid > 0) {
+      initialPaymentReceipt = {
         id: `pay-${Date.now()}`,
         orderId: newOrder.id,
         date,
@@ -416,7 +417,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         amount: paid,
         paymentMode,
         note: `Initial advance payment at order booking (${paymentMode.toUpperCase()})`
-      });
+      };
+    }
+
+    if (onAddSalesOrder) {
+      onAddSalesOrder(newOrder, initialPaymentReceipt);
     }
 
     // Reset & close
@@ -474,6 +479,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {onNavigateToInvoices && (
+            <button className="btn btn-secondary" onClick={onNavigateToInvoices} title="View official invoices & dispatch challans">
+              <FileText size={15} color="#7C3AED" />
+              <span>Invoices & Bills</span>
+            </button>
+          )}
           <button className="btn btn-secondary" onClick={handleOpenSaleModal}>
             <ReceiptText size={15} />
             <span>Record Sale</span>
@@ -496,8 +507,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '16px',
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            cursor: 'pointer'
           }}
+          onClick={() => onNavigateToSales ? onNavigateToSales() : setDashboardModal('revenue')}
+          title="Click to view all Customer Receivables"
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
@@ -525,7 +539,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
           {onNavigateToSales && (
-            <button className="btn btn-sm btn-primary" onClick={onNavigateToSales}>
+            <button className="btn btn-sm btn-primary" onClick={e => { e.stopPropagation(); onNavigateToSales(); }}>
               <span>View Customer Receivables</span>
               <ArrowUpRight size={13} />
             </button>
@@ -656,7 +670,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Card 2: 7-Day Shift Production & Dispatch Velocity (Hexabox "Spending Statistic") */}
-        <div className="hkb-card" style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div
+          className="hkb-card"
+          style={{
+            padding: '18px 22px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+          }}
+          onClick={() => {
+            setDashboardModal('production');
+            setDashModalSearch('');
+          }}
+          title="Click to inspect Daily Shift Production Ledger"
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -665,7 +694,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               <span style={{ fontSize: '11.5px', color: '#64748B' }}>Daily manufactured vs direct dispatches</span>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={onNavigateToLedger} style={{ padding: '3px 8px', fontSize: '11px' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={e => {
+                e.stopPropagation();
+                onNavigateToLedger();
+              }}
+              style={{ padding: '3px 8px', fontSize: '11px' }}
+            >
               <span>Full Ledger</span>
               <ArrowUpRight size={11} />
             </button>
@@ -737,7 +773,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Card 3: Operations Efficiency & Plant Health (Hexabox Announcement/Status) */}
-        <div className="hkb-card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div
+          className="hkb-card"
+          style={{
+            padding: '18px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+          }}
+          onClick={() => {
+            setDashboardModal('production');
+            setDashModalSearch('');
+          }}
+          title="Click to view Operations Yield & Daily Shift Details"
+        >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

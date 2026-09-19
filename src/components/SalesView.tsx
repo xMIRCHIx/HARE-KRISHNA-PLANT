@@ -26,9 +26,10 @@ interface SalesViewProps {
   salesOrders: SalesOrder[];
   customerPayments: CustomerPayment[];
   settings: Settings;
-  onAddSalesOrder: (order: SalesOrder) => void;
+  onAddSalesOrder: (order: SalesOrder, initialPayment?: CustomerPayment) => void;
   onDeleteSalesOrder: (id: string) => void;
   onRecordPayment: (payment: CustomerPayment) => void;
+  onNavigateToInvoices?: () => void;
 }
 
 export const SalesView: React.FC<SalesViewProps> = ({
@@ -37,7 +38,8 @@ export const SalesView: React.FC<SalesViewProps> = ({
   settings,
   onAddSalesOrder,
   onDeleteSalesOrder,
-  onRecordPayment
+  onRecordPayment,
+  onNavigateToInvoices
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'due' | 'paid'>('all');
@@ -194,7 +196,6 @@ export const SalesView: React.FC<SalesViewProps> = ({
   // Totals across all orders
   const totalBricksSold = salesOrders.reduce((sum, o) => sum + o.quantity, 0);
   const totalBilledRevenue = salesOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const totalPaidReceived = salesOrders.reduce((sum, o) => sum + o.paidAmount, 0);
   const totalOutstandingDues = salesOrders.reduce((sum, o) => sum + o.balanceDue, 0);
 
   // Mode-wise collection breakdown & all receipts list
@@ -248,6 +249,9 @@ export const SalesView: React.FC<SalesViewProps> = ({
   });
 
   allReceiptsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const totalReceiptsInflow = allReceiptsList.reduce((sum, r) => sum + r.amount, 0);
+  const totalPaidReceived = Math.max(totalReceiptsInflow, salesOrders.reduce((sum, o) => sum + o.paidAmount, 0));
 
   // Aggregate cash collected by mode
   const modeTotals = {
@@ -328,11 +332,9 @@ export const SalesView: React.FC<SalesViewProps> = ({
       note: saleNote.trim() || undefined
     };
 
-    onAddSalesOrder(newOrder);
-
-    // If initial payment was made, record payment receipt
+    let initialPaymentReceipt: CustomerPayment | undefined;
     if (paid > 0) {
-      onRecordPayment({
+      initialPaymentReceipt = {
         id: `pay-${Date.now()}`,
         orderId: newOrder.id,
         date,
@@ -340,8 +342,10 @@ export const SalesView: React.FC<SalesViewProps> = ({
         amount: paid,
         paymentMode,
         note: `Initial advance payment at booking (${paymentMode.toUpperCase()})`
-      });
+      };
     }
+
+    onAddSalesOrder(newOrder, initialPaymentReceipt);
 
     // Reset & close
     setCustomerName('');
@@ -458,6 +462,19 @@ export const SalesView: React.FC<SalesViewProps> = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {onNavigateToInvoices && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={onNavigateToInvoices}
+              title="View and print official tax invoices and dispatch challans"
+              style={{ color: '#7C3AED', borderColor: '#DDD6FE', background: '#F5F3FF' }}
+            >
+              <FileText size={15} />
+              <span>Invoices & Bills</span>
+            </button>
+          )}
+
           <button className="btn btn-secondary btn-sm" onClick={exportToCSV} title="Download Sales CSV">
             <FileSpreadsheet size={15} />
             <span>Export CSV</span>
