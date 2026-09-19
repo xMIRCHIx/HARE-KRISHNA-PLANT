@@ -68,6 +68,7 @@ export interface SalesOrder {
   paidAmount: number; // Amount paid/received so far
   balanceDue: number; // totalAmount - paidAmount (outstanding udhaar)
   paymentStatus: PaymentStatus;
+  paymentMode?: PaymentMode;
   note?: string;
   created_at?: string;
 }

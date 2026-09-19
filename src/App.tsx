@@ -335,6 +335,7 @@ export const App: React.FC = () => {
               expenses={expenses}
               settings={settings}
               salesOrders={salesOrders}
+              customerPayments={customerPayments}
               onAddSalesOrder={handleAddSalesOrder}
               onRecordPayment={handleRecordPayment}
               onNavigateToEntry={() => setActiveTab('daily-entry')}

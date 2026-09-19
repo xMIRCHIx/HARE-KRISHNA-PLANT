@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS public.sales_orders (
     paid_amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
     balance_due NUMERIC(12, 2) NOT NULL DEFAULT 0,
     payment_status TEXT NOT NULL DEFAULT 'due', -- 'paid', 'partial', 'due'
+    payment_mode TEXT DEFAULT NULL, -- 'cash', 'upi', 'bank_transfer', 'cheque'
     note TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -135,6 +136,7 @@ CREATE TABLE IF NOT EXISTS public.sales_orders (
     paid_amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
     balance_due NUMERIC(12, 2) NOT NULL DEFAULT 0,
     payment_status TEXT NOT NULL DEFAULT 'due', -- 'paid', 'partial', 'due'
+    payment_mode TEXT DEFAULT NULL, -- 'cash', 'upi', 'bank_transfer', 'cheque'
     note TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -270,6 +272,7 @@ export async function syncSalesOrderToCloud(order: SalesOrder): Promise<boolean>
       paid_amount: order.paidAmount,
       balance_due: order.balanceDue,
       payment_status: order.paymentStatus,
+      payment_mode: order.paymentMode || null,
       note: order.note || null
     };
     const { error } = await supabase.from('sales_orders').upsert(row);
@@ -406,6 +409,7 @@ export async function fetchAllFromCloud(): Promise<{
         paidAmount: Number(r.paid_amount) || 0,
         balanceDue: Number(r.balance_due) || 0,
         paymentStatus: r.payment_status || 'due',
+        paymentMode: r.payment_mode || undefined,
         note: r.note || undefined
       }));
     }

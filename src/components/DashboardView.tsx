@@ -16,7 +16,11 @@ import {
   Search,
   PieChart,
   Activity,
-  ShieldCheck
+  ShieldCheck,
+  Banknote,
+  Smartphone,
+  Landmark,
+  FileText
 } from 'lucide-react';
 import {
   ProductionEntry,
@@ -36,6 +40,7 @@ interface DashboardViewProps {
   expenses: Expense[];
   settings: Settings;
   salesOrders?: SalesOrder[];
+  customerPayments?: CustomerPayment[];
   onAddSalesOrder?: (order: SalesOrder) => void;
   onRecordPayment?: (payment: CustomerPayment) => void;
   onNavigateToEntry: () => void;
@@ -48,6 +53,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   expenses,
   settings,
   salesOrders = [],
+  customerPayments = [],
   onAddSalesOrder,
   onRecordPayment,
   onNavigateToEntry,
@@ -139,6 +145,128 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
+  // Helper to determine the payment mode for an order
+  const getOrderPaymentMode = (order: SalesOrder): PaymentMode | 'credit' => {
+    if (order.paymentMode) return order.paymentMode;
+    const payment = customerPayments.find(p => p.orderId === order.id);
+    if (payment) return payment.paymentMode;
+    if (order.paidAmount > 0) return 'cash';
+    return 'credit';
+  };
+
+  const PAYMENT_OPTIONS: { id: PaymentMode; label: string; sub: string; icon: React.ReactNode; color: string; bg: string; border: string }[] = [
+    { id: 'cash', label: 'Cash', sub: 'Plant Cash / Naya', icon: <Banknote size={15} />, color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+    { id: 'upi', label: 'Online / UPI', sub: 'GPay, PhonePe, QR', icon: <Smartphone size={15} />, color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+    { id: 'bank_transfer', label: 'Net Banking', sub: 'NEFT, RTGS, IMPS', icon: <Landmark size={15} />, color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+    { id: 'cheque', label: 'Cheque', sub: 'Bank Cheque Clearing', icon: <FileText size={15} />, color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' }
+  ];
+
+  const renderPaymentModeBadge = (mode: PaymentMode | 'credit') => {
+    switch (mode) {
+      case 'cash':
+        return (
+          <span
+            style={{
+              background: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: '6px'
+            }}
+          >
+            <Banknote size={11} />
+            <span>Cash</span>
+          </span>
+        );
+      case 'upi':
+        return (
+          <span
+            style={{
+              background: '#F5F3FF',
+              color: '#7C3AED',
+              border: '1px solid #DDD6FE',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: '6px'
+            }}
+          >
+            <Smartphone size={11} />
+            <span>Online/UPI</span>
+          </span>
+        );
+      case 'bank_transfer':
+        return (
+          <span
+            style={{
+              background: '#EFF6FF',
+              color: '#2563EB',
+              border: '1px solid #BFDBFE',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: '6px'
+            }}
+          >
+            <Landmark size={11} />
+            <span>Net Banking</span>
+          </span>
+        );
+      case 'cheque':
+        return (
+          <span
+            style={{
+              background: '#FFFBEB',
+              color: '#D97706',
+              border: '1px solid #FDE68A',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: '6px'
+            }}
+          >
+            <FileText size={11} />
+            <span>Cheque</span>
+          </span>
+        );
+      case 'credit':
+      default:
+        return (
+          <span
+            style={{
+              background: '#F1F5F9',
+              color: '#64748B',
+              border: '1px solid #E2E8F0',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              fontWeight: 600,
+              padding: '2px 7px',
+              borderRadius: '6px'
+            }}
+          >
+            <Clock size={10} />
+            <span>Credit</span>
+          </span>
+        );
+    }
+  };
+
   // Last 7 days for the visual chart
   const recentDays = entries.slice(-7);
   const maxProduced = Math.max(...recentDays.map(d => d.produced), 10000);
@@ -197,6 +325,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       paidAmount: paid,
       balanceDue: due,
       paymentStatus: status,
+      paymentMode: paid > 0 ? paymentMode : undefined,
       note: saleNote.trim() || undefined
     };
 
@@ -212,7 +341,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         customerName: newOrder.customerName,
         amount: paid,
         paymentMode,
-        note: 'Initial advance at order booking'
+        note: `Initial advance payment at order booking (${paymentMode.toUpperCase()})`
       });
     }
 
@@ -222,6 +351,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setSiteLocation('');
     setQuantity(5000);
     setInitialPaid(0);
+    setPaymentMode('cash');
     setSaleNote('');
     setIsSaleModalOpen(false);
   };
@@ -952,6 +1082,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <th>Total Bill</th>
                   <th>Paid Amount</th>
                   <th>Outstanding Due</th>
+                  <th>Mode</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
@@ -1023,6 +1154,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         >
                           ₹{order.balanceDue.toLocaleString('en-IN')}
                         </span>
+                      </td>
+                      <td>
+                        {renderPaymentModeBadge(getOrderPaymentMode(order))}
                       </td>
                       <td>
                         {order.paymentStatus === 'paid' && (
@@ -1216,35 +1350,68 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
 
-              <div className="responsive-form-duo">
-                <div className="form-group">
-                  <label className="form-label">Advance / Payment Received (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={quantity * rate}
-                    className="form-input tabular-nums"
-                    value={initialPaid}
-                    onChange={e => setInitialPaid(Number(e.target.value))}
-                    placeholder="₹ 0 if on credit"
-                  />
+              <div className="form-group">
+                <label className="form-label">Advance / Payment Received (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max={quantity * rate}
+                  className="form-input tabular-nums"
+                  value={initialPaid}
+                  onChange={e => setInitialPaid(Number(e.target.value))}
+                  placeholder="₹ 0 if on full credit / udhaar"
+                />
+              </div>
+
+              {/* Payment Mode Selector */}
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <label className="form-label" style={{ margin: 0 }}>
+                    Payment Mode {initialPaid > 0 ? '(Received Via)' : '(If Advance Paid)'}
+                  </label>
+                  {initialPaid === 0 && (
+                    <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>
+                      Logged as Credit until advance is entered
+                    </span>
+                  )}
                 </div>
 
-                {initialPaid > 0 && (
-                  <div className="form-group">
-                    <label className="form-label">Payment Mode</label>
-                    <select
-                      className="form-select"
-                      value={paymentMode}
-                      onChange={e => setPaymentMode(e.target.value as PaymentMode)}
-                    >
-                      <option value="cash">Cash</option>
-                      <option value="upi">UPI / GPay / PhonePe</option>
-                      <option value="bank_transfer">Bank Transfer (NEFT/RTGS)</option>
-                      <option value="cheque">Cheque</option>
-                    </select>
-                  </div>
-                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                  {PAYMENT_OPTIONS.map(opt => {
+                    const isSelected = paymentMode === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setPaymentMode(opt.id)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '10px 4px',
+                          borderRadius: '10px',
+                          border: isSelected ? `2px solid ${opt.color}` : '1.5px solid #E2E8F0',
+                          background: isSelected ? opt.bg : '#FAFAFA',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          gap: '4px',
+                          boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
+                        }}
+                      >
+                        <div style={{ color: isSelected ? opt.color : '#64748B' }}>
+                          {opt.icon}
+                        </div>
+                        <span style={{ fontSize: '11.5px', fontWeight: 700, color: isSelected ? opt.color : '#334155' }}>
+                          {opt.label}
+                        </span>
+                        <span style={{ fontSize: '9.5px', color: isSelected ? opt.color : '#94A3B8', opacity: isSelected ? 0.95 : 0.8 }}>
+                          {opt.sub}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="form-group">
@@ -1252,7 +1419,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g. Loaded in Truck HR-02-AB-1234..."
+                  placeholder="e.g. Loaded in Truck HR-02-AB-1234, UTR / Cheque Ref..."
                   value={saleNote}
                   onChange={e => setSaleNote(e.target.value)}
                 />
@@ -1291,7 +1458,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="hkb-card"
             style={{
               width: '100%',
-              maxWidth: '460px',
+              maxWidth: '480px',
               padding: '24px',
               background: '#FFFFFF',
               boxShadow: '0 20px 48px rgba(15, 23, 42, 0.2)'
@@ -1369,18 +1536,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Payment Mode</label>
-                <select
-                  className="form-select"
-                  value={payMode}
-                  onChange={e => setPayMode(e.target.value as PaymentMode)}
-                >
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI / GPay / PhonePe</option>
-                  <option value="bank_transfer">Bank Transfer (NEFT/RTGS)</option>
-                  <option value="cheque">Cheque</option>
-                </select>
+              {/* Payment Mode Selector */}
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label className="form-label" style={{ margin: 0 }}>
+                  Payment Method
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                  {PAYMENT_OPTIONS.map(opt => {
+                    const isSelected = payMode === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setPayMode(opt.id)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '10px 4px',
+                          borderRadius: '10px',
+                          border: isSelected ? `2px solid ${opt.color}` : '1.5px solid #E2E8F0',
+                          background: isSelected ? opt.bg : '#FAFAFA',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          gap: '4px',
+                          boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
+                        }}
+                      >
+                        <div style={{ color: isSelected ? opt.color : '#64748B' }}>
+                          {opt.icon}
+                        </div>
+                        <span style={{ fontSize: '11.5px', fontWeight: 700, color: isSelected ? opt.color : '#334155' }}>
+                          {opt.label}
+                        </span>
+                        <span style={{ fontSize: '9.5px', color: isSelected ? opt.color : '#94A3B8', opacity: isSelected ? 0.95 : 0.8 }}>
+                          {opt.sub}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="form-group">
