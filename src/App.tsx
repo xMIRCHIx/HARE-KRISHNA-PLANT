@@ -249,19 +249,19 @@ export const App: React.FC = () => {
                 width: '28px',
                 height: '28px',
                 borderRadius: '7px',
-                background: '#0F172A',
+                background: 'linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)',
                 color: '#FFFFFF',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
             >
-              <Boxes size={16} color="#60A5FA" />
+              <Boxes size={16} color="#FFFFFF" />
             </div>
             <span style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A', letterSpacing: '-0.02em' }}>
               HK Bricks
             </span>
-            <span style={{ fontSize: '9px', fontWeight: 700, background: '#EFF6FF', color: '#2563EB', padding: '1px 5px', borderRadius: '4px', border: '1px solid #DBEAFE' }}>
+            <span style={{ fontSize: '9px', fontWeight: 700, background: '#F5F3FF', color: '#7C3AED', padding: '1px 5px', borderRadius: '4px', border: '1px solid #DDD6FE' }}>
               ADMIN
             </span>
           </div>

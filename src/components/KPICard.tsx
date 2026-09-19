@@ -41,9 +41,7 @@ export const KPICard: React.FC<KPICardProps> = ({
     ? 'kpi-card-amber'
     : theme === 'rose'
     ? 'kpi-card-rose'
-    : theme === 'purple'
-    ? 'kpi-card-purple'
-    : 'kpi-card-blue';
+    : 'kpi-card-purple';
 
   const iconBg = isLoss
     ? '#FEE2E2'
@@ -53,9 +51,7 @@ export const KPICard: React.FC<KPICardProps> = ({
     ? '#FEF3C7'
     : theme === 'rose'
     ? '#FEE2E2'
-    : theme === 'purple'
-    ? '#EDE9FE'
-    : '#DBEAFE';
+    : '#F5F3FF';
 
   const iconColor = isLoss
     ? '#DC2626'
@@ -65,9 +61,7 @@ export const KPICard: React.FC<KPICardProps> = ({
     ? '#D97706'
     : theme === 'rose'
     ? '#DC2626'
-    : theme === 'purple'
-    ? '#7C3AED'
-    : '#2563EB';
+    : '#7C3AED';
 
   const accentLine = isLoss
     ? '#EF4444'
@@ -75,7 +69,7 @@ export const KPICard: React.FC<KPICardProps> = ({
     ? '#10B981'
     : theme === 'amber'
     ? '#F59E0B'
-    : '#3B82F6';
+    : '#7C3AED';
 
   return (
     <div

@@ -162,7 +162,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
           <div className="hkb-card" style={{ padding: '22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563EB', background: '#EFF6FF', padding: '2px 8px', borderRadius: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px' }}>
                   STEP 1
                 </span>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
@@ -221,7 +221,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   <label className="form-label">Total Produced (All Batches)</label>
                   <div
                     className="form-input tabular-nums"
-                    style={{ background: '#F8FAFC', fontWeight: 800, color: '#2563EB', display: 'flex', alignItems: 'center' }}
+                    style={{ background: '#F8FAFC', fontWeight: 800, color: '#7C3AED', display: 'flex', alignItems: 'center' }}
                   >
                     {totalProduced.toLocaleString('en-IN')} pcs
                   </div>
@@ -275,7 +275,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
           <div className="hkb-card" style={{ padding: '22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563EB', background: '#EFF6FF', padding: '2px 8px', borderRadius: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px' }}>
                   STEP 2
                 </span>
                 <div>
@@ -422,7 +422,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
           {/* Card 3: Labor Payoff & Sales */}
           <div className="hkb-card" style={{ padding: '22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563EB', background: '#EFF6FF', padding: '2px 8px', borderRadius: '6px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px' }}>
                 STEP 3
               </span>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
@@ -534,7 +534,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: liveCalc.isLoss ? '#FEE2E2' : '#EFF6FF', color: liveCalc.isLoss ? '#DC2626' : '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: liveCalc.isLoss ? '#FEE2E2' : '#F5F3FF', color: liveCalc.isLoss ? '#DC2626' : '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Calculator size={17} />
                 </div>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>Live Dynamic Costing</h3>
@@ -638,7 +638,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                 fontSize: '11.5px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#2563EB' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#7C3AED' }}>
                 <Sparkles size={13} />
                 <span>Estimated Target: ~{morningEst.recommendedTarget.toLocaleString('en-IN')} pcs</span>
               </div>

@@ -403,12 +403,12 @@ export const SalesView: React.FC<SalesViewProps> = ({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', fontSize: '11px', color: '#64748B' }}>
                           {order.customerPhone && (
                             <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                              <Phone size={11} color="#2563EB" />
+                              <Phone size={11} color="#7C3AED" />
                               {order.customerPhone}
                             </span>
                           )}
                           {order.siteLocation && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#EFF6FF', color: '#1D4ED8', padding: '1px 5px', borderRadius: '4px' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#F5F3FF', color: '#7C3AED', padding: '1px 5px', borderRadius: '4px' }}>
                               <MapPin size={10} />
                               {order.siteLocation}
                             </span>
@@ -417,7 +417,7 @@ export const SalesView: React.FC<SalesViewProps> = ({
                       </div>
                     </td>
 
-                    <td style={{ fontWeight: 700, color: '#2563EB' }} className="tabular-nums">
+                    <td style={{ fontWeight: 700, color: '#7C3AED' }} className="tabular-nums">
                       {order.quantity.toLocaleString('en-IN')} pcs
                     </td>
 

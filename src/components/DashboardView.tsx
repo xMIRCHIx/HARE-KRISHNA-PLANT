@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Boxes,
-  IndianRupee,
   TrendingUp,
   AlertTriangle,
   Layers,
@@ -88,6 +87,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Recent 5 sales orders for the dashboard widget
   const recentSales = salesOrders.slice(0, 5);
+
+  // Avatar palette for Hexabox customer transaction rows
+  const AVATAR_PALETTE = [
+    { bg: '#EDE9FE', color: '#7C3AED' },
+    { bg: '#FEF3C7', color: '#D97706' },
+    { bg: '#D1FAE5', color: '#059669' },
+    { bg: '#FCE7F3', color: '#DB2777' },
+    { bg: '#E0E7FF', color: '#4F46E5' }
+  ];
+
+  const getAvatarStyle = (name: string) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
 
   // Last 7 days for the visual chart
   const recentDays = entries.slice(-7);
@@ -325,14 +347,81 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* 6 Comprehensive KPI Cards Row: Production, Stock, Sales, Revenue, Dues, Profit */}
+      {/* Hexabox Hero Showcase & Operations Highlights */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', alignItems: 'stretch' }}>
+        {/* Hexabox Hero Highlight Card (Violet Gradient with in-card velocity bars) */}
+        <div className="hexabox-hero-card" style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '190px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255, 255, 255, 0.85)' }}>
+                  Total Plant Sales Revenue
+                </span>
+                <span style={{ background: 'rgba(255, 255, 255, 0.2)', fontSize: '10.5px', padding: '2px 8px', borderRadius: '12px', fontWeight: 600, color: '#FFFFFF' }}>
+                  Live Shift
+                </span>
+              </div>
+              <div className="tabular-nums" style={{ fontSize: '34px', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.025em', color: '#FFFFFF' }}>
+                ₹{displayRevenue.toLocaleString('en-IN')}
+              </div>
+            </div>
+
+            {/* Embedded Velocity Spark Bars (Hexabox Signature Element) */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '5px', height: '52px', padding: '6px 12px', background: 'rgba(255, 255, 255, 0.12)', borderRadius: '10px', backdropFilter: 'blur(6px)', flexShrink: 0 }}>
+              {[35, 60, 85, 100, 70].map((h, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: '7px',
+                    height: `${h}%`,
+                    background: i === 3 ? '#FFFFFF' : 'rgba(255, 255, 255, 0.45)',
+                    borderRadius: '2px'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.18)', paddingTop: '14px', marginTop: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ background: 'rgba(16, 185, 129, 0.25)', color: '#A7F3D0', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700 }}>
+                {latestCalc && latestCalc.profitPerBrick >= 0 ? '+' : ''}₹{(latestCalc?.profitPerBrick || 0).toFixed(2)} / brick
+              </span>
+              <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.9)', fontWeight: 500 }}>
+                Net realized margin ({latestCalc ? latestCalc.marginPercent.toFixed(1) : '0'}%)
+              </span>
+            </div>
+            <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              Cash collected: <strong style={{ color: '#FFFFFF' }}>₹{totalCashCollected.toLocaleString('en-IN')}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Card: Customer Outstanding Dues */}
+        <KPICard
+          title="Customer Outstanding Dues"
+          value={totalOutstandingDues}
+          prefix="₹"
+          decimals={0}
+          theme={totalOutstandingDues > 0 ? 'rose' : 'green'}
+          isLoss={totalOutstandingDues > 0}
+          subtitle={totalOutstandingDues > 0 ? 'Pending to be collected from customers' : 'All customer balances settled'}
+          badge={{
+            text: totalOutstandingDues > 0 ? 'Payment Due' : 'All Clear',
+            type: totalOutstandingDues > 0 ? 'bad' : 'good'
+          }}
+          icon={<Clock size={18} />}
+        />
+      </div>
+
+      {/* 4 Operations KPI Cards Row */}
       <div className="dashboard-kpi-grid">
         {/* Card 1: Today's Output */}
         <KPICard
           title="Today's Production"
           value={latestEntry ? latestEntry.produced : 0}
           suffix=" pcs"
-          theme="blue"
+          theme="purple"
           subtitle={latestEntry ? `Logged on ${latestEntry.date}` : 'No entries yet'}
           badge={{
             text: latestEntry && latestEntry.produced >= (latestEntry.estimatedTarget || 8000) ? 'Target Met' : 'Normal Shift',
@@ -360,7 +449,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           title="Total Bricks Sold"
           value={displaySoldVolume}
           suffix=" pcs"
-          theme="blue"
+          theme="purple"
           subtitle={`${salesOrders.length > 0 ? `${salesOrders.length} customer orders fulfilled` : 'Direct yard dispatches'}`}
           badge={{
             text: 'Volume Sold',
@@ -369,38 +458,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           icon={<TrendingUp size={18} />}
         />
 
-        {/* Card 4: Total Sales Revenue */}
-        <KPICard
-          title="Total Sales Revenue"
-          value={displayRevenue}
-          prefix="₹"
-          decimals={0}
-          theme="amber"
-          subtitle={`Cash collected: ₹${totalCashCollected.toLocaleString('en-IN')}`}
-          badge={{
-            text: `₹${settings.defaultSalePrice.toFixed(2)}/brick`,
-            type: 'warn'
-          }}
-          icon={<IndianRupee size={18} />}
-        />
-
-        {/* Card 5: Customer Outstanding Dues */}
-        <KPICard
-          title="Customer Outstanding Dues"
-          value={totalOutstandingDues}
-          prefix="₹"
-          decimals={0}
-          theme={totalOutstandingDues > 0 ? 'rose' : 'green'}
-          isLoss={totalOutstandingDues > 0}
-          subtitle={totalOutstandingDues > 0 ? 'Pending to be collected from customers' : 'All customer balances settled'}
-          badge={{
-            text: totalOutstandingDues > 0 ? 'Payment Due' : 'All Clear',
-            type: totalOutstandingDues > 0 ? 'bad' : 'good'
-          }}
-          icon={<Clock size={18} />}
-        />
-
-        {/* Card 6: Net Plant Profit */}
+        {/* Card 4: Net Plant Profit */}
         <KPICard
           title="Net Plant Profit"
           value={summary.totalNetProfit}
@@ -423,7 +481,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="hkb-card" style={{ padding: '22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Layers size={17} />
               </div>
               <div>
@@ -494,7 +552,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         title={`Cement: ₹${((latestEntry.cementBags * latestEntry.cementRate) / latestEntry.produced).toFixed(2)}`}
                         style={{
                           width: `${(((latestEntry.cementBags * latestEntry.cementRate) / latestCalc.totalCost) * 100) || 0}%`,
-                          background: '#2563EB'
+                          background: '#6366F1'
                         }}
                       />
                       <div
@@ -527,7 +585,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2563EB' }} />
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366F1' }} />
                     Cement ({latestEntry.cementBags} bags @ ₹{latestEntry.cementRate})
                   </span>
                   <span className="tabular-nums" style={{ fontWeight: 700, color: '#0F172A' }}>
@@ -626,7 +684,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748B' }}>
                     EVENING ACTUAL COUNT
                   </span>
-                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#2563EB', marginTop: '2px' }} className="tabular-nums">
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#7C3AED', marginTop: '2px' }} className="tabular-nums">
                     {latestEntry.produced.toLocaleString('en-IN')} pcs
                   </div>
                   <span style={{ fontSize: '11px', color: '#94A3B8' }}>
@@ -716,7 +774,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       style={{
                         width: '18px',
                         height: `${prodHeight}px`,
-                        background: '#2563EB',
+                        background: '#6366F1',
                         borderRadius: '4px 4px 0 0'
                       }}
                     />
@@ -741,7 +799,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginTop: '14px', fontSize: '12px', color: '#64748B', fontWeight: 500 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#2563EB' }} />
+              <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#6366F1' }} />
               <span>Bricks Produced</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -752,19 +810,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Recent Customer Sales & Receivables Section */}
+      {/* Recent Customer Sales & Receivables Section (Hexabox Customer Transaction Widget) */}
       <div className="hkb-card" style={{ padding: '22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ReceiptText size={18} />
             </div>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
-                Recent Customer Sales & Outstanding Balances
+                Customer Transactions & Outstanding Accounts
               </h3>
               <p style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                Latest customer orders, delivery locations, and pending dues
+                Latest customer orders, delivery locations, and pending balance status
               </p>
             </div>
           </div>
@@ -797,41 +855,65 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <table className="hkb-table">
               <thead>
                 <tr>
+                  <th>Customer</th>
                   <th>Date</th>
-                  <th>Customer Name</th>
                   <th>Quantity</th>
                   <th>Rate</th>
                   <th>Total Bill</th>
                   <th>Paid Amount</th>
                   <th>Outstanding Due</th>
                   <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {recentSales.map(order => {
                   const isDue = order.balanceDue > 0;
+                  const av = getAvatarStyle(order.customerName);
+                  const inits = getInitials(order.customerName);
+
                   return (
                     <tr key={order.id} className={isDue ? 'row-loss' : ''}>
-                      <td style={{ fontWeight: 600 }}>{order.date}</td>
                       <td>
-                        <div style={{ fontWeight: 700, color: '#0F172A' }}>{order.customerName}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', fontSize: '11px', color: '#64748B' }}>
-                          {order.customerPhone && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                              <Phone size={10} color="#2563EB" />
-                              {order.customerPhone}
-                            </span>
-                          )}
-                          {order.siteLocation && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#EFF6FF', color: '#1D4ED8', padding: '1px 5px', borderRadius: '4px' }}>
-                              <MapPin size={9} />
-                              {order.siteLocation}
-                            </span>
-                          )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div
+                            style={{
+                              width: '34px',
+                              height: '34px',
+                              borderRadius: '50%',
+                              background: av.bg,
+                              color: av.color,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              flexShrink: 0
+                            }}
+                          >
+                            {inits}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#0F172A' }}>{order.customerName}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', fontSize: '11px', color: '#64748B' }}>
+                              {order.customerPhone && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                  <Phone size={10} color="#7C3AED" />
+                                  {order.customerPhone}
+                                </span>
+                              )}
+                              {order.siteLocation && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#F5F3FF', color: '#7C3AED', padding: '1px 5px', borderRadius: '4px' }}>
+                                  <MapPin size={9} />
+                                  {order.siteLocation}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td className="tabular-nums" style={{ color: '#2563EB', fontWeight: 600 }}>
+                      <td style={{ fontWeight: 600 }}>{order.date}</td>
+                      <td className="tabular-nums" style={{ color: '#7C3AED', fontWeight: 600 }}>
                         {order.quantity.toLocaleString('en-IN')} pcs
                       </td>
                       <td className="tabular-nums">₹{order.rate.toFixed(2)}</td>
@@ -854,20 +936,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </td>
                       <td>
                         {order.paymentStatus === 'paid' && (
-                          <span className="badge badge-good">PAID</span>
+                          <span className="badge badge-good" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <CheckCircle2 size={11} /> Completed
+                          </span>
                         )}
                         {order.paymentStatus === 'partial' && (
-                          <span className="badge badge-warn">PARTIAL</span>
+                          <span className="badge badge-warn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={11} /> Partial
+                          </span>
                         )}
                         {order.paymentStatus === 'due' && (
-                          <span className="badge badge-bad">DUE</span>
+                          <span className="badge badge-bad" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <AlertTriangle size={11} /> Due
+                          </span>
                         )}
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         {isDue ? (
                           <button
                             className="btn btn-secondary btn-sm"
-                            style={{ padding: '3px 8px', fontSize: '11.5px', color: '#2563EB' }}
+                            style={{ padding: '3px 10px', fontSize: '11.5px', color: '#7C3AED', background: '#F5F3FF', borderColor: '#DDD6FE' }}
                             onClick={() => handleOpenPaymentModal(order)}
                           >
                             <CheckCircle2 size={12} />

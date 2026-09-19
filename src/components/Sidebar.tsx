@@ -87,23 +87,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div style={{ padding: '22px 18px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* Refined emblem */}
+              {/* Hexabox 3D Violet Emblem */}
               <div
                 style={{
                   width: '38px',
                   height: '38px',
                   borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  background: 'linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)',
                   color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.4)',
+                  boxShadow: '0 6px 16px rgba(124, 58, 237, 0.32)',
                   flexShrink: 0
                 }}
               >
-                <Boxes size={20} color="#60A5FA" />
+                <Boxes size={20} color="#FFFFFF" />
               </div>
 
               <div style={{ minWidth: 0 }}>
@@ -111,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   style={{
                     fontSize: '15px',
                     fontWeight: 800,
-                    color: '#F8FAFC',
+                    color: '#0F172A',
                     letterSpacing: '-0.025em',
                     lineHeight: 1.2
                   }}
@@ -123,17 +122,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     style={{
                       fontSize: '9px',
                       fontWeight: 700,
-                      background: 'rgba(59, 130, 246, 0.18)',
-                      color: '#60A5FA',
-                      padding: '1px 5px',
+                      background: '#F5F3FF',
+                      color: '#7C3AED',
+                      padding: '1px 6px',
                       borderRadius: '4px',
-                      border: '1px solid rgba(59, 130, 246, 0.32)',
+                      border: '1px solid #DDD6FE',
                       letterSpacing: '0.04em'
                     }}
                   >
                     ADMIN
                   </span>
-                  <span style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 500 }}>
+                  <span style={{ fontSize: '10.5px', color: '#94A3B8', fontWeight: 500 }}>
                     Plant ERP v2.4
                   </span>
                 </div>
@@ -147,12 +146,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="mobile-sidebar-close"
                 onClick={onCloseMobile}
                 title="Close Menu"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: '#94A3B8',
-                  borderRadius: '7px'
-                }}
               >
                 <X size={18} />
               </button>
@@ -167,9 +160,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 alignItems: 'center',
                 gap: '6px',
                 padding: '4px 9px',
-                background: 'rgba(16, 185, 129, 0.14)',
-                border: '1px solid rgba(16, 185, 129, 0.28)',
-                color: '#34D399',
+                background: '#ECFDF5',
+                border: '1px solid #D1FAE5',
+                color: '#059669',
                 borderRadius: '6px',
                 fontSize: '10.5px',
                 fontWeight: 600
@@ -184,9 +177,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 padding: '4px 9px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                color: '#94A3B8',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                color: '#64748B',
                 borderRadius: '6px',
                 fontSize: '10.5px',
                 fontWeight: 500
@@ -203,13 +196,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
               padding: '3px',
               borderRadius: '8px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', paddingLeft: '8px', color: '#94A3B8', fontSize: '11px', fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', paddingLeft: '8px', color: '#64748B', fontSize: '11px', fontWeight: 600 }}>
               <Languages size={12} />
               <span>Language</span>
             </div>
@@ -221,12 +214,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   padding: '3px 9px',
                   fontSize: '11px',
                   fontWeight: language === 'en' ? 700 : 500,
-                  color: language === 'en' ? '#FFFFFF' : '#64748B',
-                  background: language === 'en' ? '#1E293B' : 'transparent',
+                  color: language === 'en' ? '#7C3AED' : '#64748B',
+                  background: language === 'en' ? '#FFFFFF' : 'transparent',
                   border: 'none',
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  boxShadow: language === 'en' ? '0 2px 6px rgba(0, 0, 0, 0.35)' : 'none'
+                  boxShadow: language === 'en' ? '0 1px 3px rgba(0, 0, 0, 0.08)' : 'none'
                 }}
               >
                 English
@@ -238,12 +231,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   padding: '3px 9px',
                   fontSize: '11px',
                   fontWeight: language === 'hi' ? 700 : 500,
-                  color: language === 'hi' ? '#FFFFFF' : '#64748B',
-                  background: language === 'hi' ? '#1E293B' : 'transparent',
+                  color: language === 'hi' ? '#7C3AED' : '#64748B',
+                  background: language === 'hi' ? '#FFFFFF' : 'transparent',
                   border: 'none',
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  boxShadow: language === 'hi' ? '0 2px 6px rgba(0, 0, 0, 0.35)' : 'none'
+                  boxShadow: language === 'hi' ? '0 1px 3px rgba(0, 0, 0, 0.08)' : 'none'
                 }}
               >
                 हिन्दी
@@ -256,7 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div style={{ padding: '14px 10px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1, overflowY: 'auto' }}>
           {/* Group 1: Operations */}
           <div>
-            <div style={{ padding: '0 10px 6px', fontSize: '10px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <div style={{ padding: '0 10px 6px', fontSize: '10.5px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
               Operations
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -267,14 +260,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={item.id}
                     className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
                     onClick={() => handleNavClick(item.id)}
-                    style={{
-                      borderLeft: isActive ? '3px solid #3B82F6' : '3px solid transparent'
-                    }}
                   >
-                    <div style={{ color: isActive ? '#60A5FA' : '#64748B' }}>
+                    <div className="nav-icon-wrapper" style={{ color: isActive ? '#7C3AED' : '#64748B' }}>
                       {item.icon}
                     </div>
-                    <span style={{ fontSize: '13px', fontWeight: isActive ? 600 : 500, flex: 1, color: isActive ? '#FFFFFF' : '#94A3B8' }}>
+                    <span style={{ fontSize: '13px', fontWeight: isActive ? 600 : 500, flex: 1 }}>
                       {item.label}
                     </span>
                     {item.badge && (
@@ -284,8 +274,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           fontWeight: 700,
                           padding: '2px 7px',
                           borderRadius: '9999px',
-                          background: isActive ? '#EF4444' : 'rgba(239, 68, 68, 0.22)',
-                          color: isActive ? '#FFFFFF' : '#F87171'
+                          background: '#FEE2E2',
+                          color: '#DC2626',
+                          border: '1px solid #FECACA'
                         }}
                       >
                         {item.badge}
@@ -299,7 +290,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Group 2: Financials */}
           <div>
-            <div style={{ padding: '0 10px 6px', fontSize: '10px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <div style={{ padding: '0 10px 6px', fontSize: '10.5px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
               Financials
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -310,14 +301,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={item.id}
                     className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
                     onClick={() => handleNavClick(item.id)}
-                    style={{
-                      borderLeft: isActive ? '3px solid #3B82F6' : '3px solid transparent'
-                    }}
                   >
-                    <div style={{ color: isActive ? '#60A5FA' : '#64748B' }}>
+                    <div className="nav-icon-wrapper" style={{ color: isActive ? '#7C3AED' : '#64748B' }}>
                       {item.icon}
                     </div>
-                    <span style={{ fontSize: '13px', fontWeight: isActive ? 600 : 500, color: isActive ? '#FFFFFF' : '#94A3B8' }}>
+                    <span style={{ fontSize: '13px', fontWeight: isActive ? 600 : 500, flex: 1 }}>
                       {item.label}
                     </span>
                   </button>
@@ -328,7 +316,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Group 3: System & Docs */}
           <div>
-            <div style={{ padding: '0 10px 6px', fontSize: '10px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <div style={{ padding: '0 10px 6px', fontSize: '10.5px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
               System
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -339,14 +327,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={item.id}
                     className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
                     onClick={() => handleNavClick(item.id)}
-                    style={{
-                      borderLeft: isActive ? '3px solid #3B82F6' : '3px solid transparent'
-                    }}
                   >
-                    <div style={{ color: isActive ? '#60A5FA' : '#64748B' }}>
+                    <div className="nav-icon-wrapper" style={{ color: isActive ? '#7C3AED' : '#64748B' }}>
                       {item.icon}
                     </div>
-                    <span style={{ fontSize: '13px', fontWeight: isActive ? 600 : 500, color: isActive ? '#FFFFFF' : '#94A3B8' }}>
+                    <span style={{ fontSize: '13px', fontWeight: isActive ? 600 : 500, flex: 1 }}>
                       {item.label}
                     </span>
                   </button>
@@ -364,7 +349,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             display: 'flex',
             flexDirection: 'column',
             gap: '8px',
-            background: 'rgba(0, 0, 0, 0.22)'
+            background: '#F8FAFC'
           }}
         >
           {/* Supabase status badge */}
@@ -375,18 +360,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '6px 10px',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.07)',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
               borderRadius: '8px',
               fontSize: '11px',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)'
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#CBD5E1', fontWeight: 500 }}>
-              <Database size={13} color="#60A5FA" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontWeight: 500 }}>
+              <Database size={13} color="#7C3AED" />
               <span>Supabase Cloud</span>
             </div>
-            <CheckCircle2 size={13} color="#34D399" />
+            <CheckCircle2 size={13} color="#10B981" />
           </div>
 
           {/* User profile & exit */}
@@ -394,24 +379,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div
                 style={{
-                  width: '30px',
-                  height: '30px',
-                  borderRadius: '7px',
-                  background: 'linear-gradient(135deg, #1E293B, #334155)',
-                  color: '#F8FAFC',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)',
+                  color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '11.5px',
-                  fontWeight: 700
+                  fontWeight: 700,
+                  boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)'
                 }}
               >
                 MG
               </div>
               <div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#F8FAFC' }}>Maneesh Garg</div>
-                <div style={{ fontSize: '10px', color: '#64748B' }}>Plant Owner</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>Maneesh Garg</div>
+                <div style={{ fontSize: '10px', color: '#94A3B8' }}>Plant Owner</div>
               </div>
             </div>
             <button
@@ -419,10 +404,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title="Log Out"
               style={{
                 padding: '5px 8px',
-                color: '#94A3B8',
+                color: '#64748B',
                 borderRadius: '6px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
