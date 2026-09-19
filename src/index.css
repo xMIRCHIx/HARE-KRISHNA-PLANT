@@ -947,16 +947,31 @@ h1, h2, h3, h4, h5, h6, .kpi-num {
 
   /* Hide app chrome, sidebar, navbar, floating buttons, action headers */
   .no-print,
-  .no-print-bg,
   .sidebar,
   .app-sidebar,
   .navbar,
+  .crm-header,
   .app-header,
   .invoice-actions-bar,
-  .crm-layout > *:not(.standalone-invoice-page),
   .modal-overlay:not(.invoice-modal-overlay),
   button:not(.print-include) {
     display: none !important;
+  }
+
+  /* Reset app containers so print flows without height or overflow constraints */
+  #root,
+  .crm-layout,
+  .crm-main,
+  .crm-main-inner {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
   }
 
   /* Invoice modal / standalone overlay becomes full page print container */

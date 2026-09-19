@@ -117,7 +117,112 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   };
 
   const handlePrint = () => {
-    window.print();
+    try {
+      const invoiceElement = invoiceRef.current;
+      if (!invoiceElement) {
+        window.print();
+        return;
+      }
+
+      // Remove existing print iframe if present
+      const existingIframe = document.getElementById('hkb-invoice-print-frame');
+      if (existingIframe) {
+        existingIframe.remove();
+      }
+
+      // Create isolated invisible iframe
+      const iframe = document.createElement('iframe');
+      iframe.id = 'hkb-invoice-print-frame';
+      iframe.style.position = 'fixed';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      iframe.style.width = '0px';
+      iframe.style.height = '0px';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentWindow?.document || iframe.contentDocument;
+      if (!iframeDoc) {
+        window.print();
+        return;
+      }
+
+      const invoiceHTML = invoiceElement.outerHTML;
+
+      iframeDoc.open();
+      iframeDoc.write(`
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <title>Hare Krishna Bricks — ${invoiceNumber}</title>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+            <style>
+              * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              body {
+                font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: #FFFFFF !important;
+                color: #0F172A !important;
+                margin: 0;
+                padding: 0;
+              }
+              .official-invoice-document {
+                width: 100% !important;
+                max-width: 100% !important;
+                box-shadow: none !important;
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 8px !important;
+                padding: 24px 28px !important;
+                margin: 0 auto !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .tabular-nums {
+                font-variant-numeric: tabular-nums;
+              }
+              @page {
+                size: A4 portrait;
+                margin: 8mm 10mm;
+              }
+              @media print {
+                body {
+                  padding: 0;
+                  margin: 0;
+                }
+                .official-invoice-document {
+                  box-shadow: none !important;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            ${invoiceHTML}
+          </body>
+        </html>
+      `);
+      iframeDoc.close();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (err) {
+          console.warn('Iframe print error, falling back to window.print', err);
+          window.print();
+        }
+      }, 350);
+    } catch (e) {
+      console.warn('Print error fallback', e);
+      window.print();
+    }
   };
 
   const handleCopySummary = () => {
@@ -179,7 +284,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
   return (
     <div
-      className="standalone-invoice-page no-print-bg"
+      className="standalone-invoice-page"
       style={{
         position: 'fixed',
         inset: 0,
