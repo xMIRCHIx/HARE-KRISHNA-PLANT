@@ -1,4 +1,4 @@
-import React from 'react';
+import { ArrowUpRight } from 'lucide-react';
 import { useAnimatedCount } from '../hooks/useAnimatedCount';
 
 export type CardTheme = 'green' | 'blue' | 'amber' | 'rose' | 'purple' | 'default';
@@ -17,6 +17,7 @@ interface KPICardProps {
   icon: React.ReactNode;
   theme?: CardTheme;
   isLoss?: boolean;
+  onClick?: () => void;
 }
 
 export const KPICard: React.FC<KPICardProps> = ({
@@ -29,7 +30,8 @@ export const KPICard: React.FC<KPICardProps> = ({
   badge,
   icon,
   theme = 'blue',
-  isLoss
+  isLoss,
+  onClick
 }) => {
   const { formatted } = useAnimatedCount(value, 750, decimals);
 
@@ -74,16 +76,20 @@ export const KPICard: React.FC<KPICardProps> = ({
   return (
     <div
       className={`hkb-card ${themeClass}`}
+      onClick={onClick}
       style={{
         padding: '20px 22px',
         display: 'flex',
         flexDirection: 'column',
         gap: '14px',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'transform 0.18s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.18s ease'
       }}
+      title={onClick ? `${title} — Click to view detailed breakdown list` : undefined}
     >
-      {/* Top row: Icon + Badge */}
+      {/* Top row: Icon + Badge / Click hint */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div
           className="kpi-icon-bubble"
@@ -103,11 +109,31 @@ export const KPICard: React.FC<KPICardProps> = ({
           {icon}
         </div>
 
-        {badge && (
-          <span className={`badge badge-${badge.type}`}>
-            {badge.text}
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {badge && (
+            <span className={`badge badge-${badge.type}`}>
+              {badge.text}
+            </span>
+          )}
+          {onClick && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                background: 'rgba(15, 23, 42, 0.04)',
+                color: '#64748B',
+                transition: 'all 0.15s ease'
+              }}
+              title="Click to view details"
+            >
+              <ArrowUpRight size={12} />
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Middle: Title & Main Large Bold Numeral */}

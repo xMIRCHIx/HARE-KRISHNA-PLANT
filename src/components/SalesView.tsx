@@ -14,7 +14,9 @@ import {
   Banknote,
   Smartphone,
   Landmark,
-  FileText
+  FileText,
+  ArrowUpRight,
+  Receipt
 } from 'lucide-react';
 import { SalesOrder, CustomerPayment, Settings, PaymentMode, PaymentStatus } from '../types';
 import { KPICard } from './KPICard';
@@ -38,8 +40,11 @@ export const SalesView: React.FC<SalesViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'due' | 'paid'>('all');
+  const [modeFilter, setModeFilter] = useState<'all' | PaymentMode | 'credit'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [paymentModalOrder, setPaymentModalOrder] = useState<SalesOrder | null>(null);
+  const [drilldownModal, setDrilldownModal] = useState<'volume' | 'billed' | 'cash' | 'dues' | null>(null);
+  const [drilldownSearch, setDrilldownSearch] = useState('');
 
   // Helper to determine the payment mode for an order
   const getOrderPaymentMode = (order: SalesOrder): PaymentMode | 'credit' => {
@@ -190,6 +195,73 @@ export const SalesView: React.FC<SalesViewProps> = ({
   const totalPaidReceived = salesOrders.reduce((sum, o) => sum + o.paidAmount, 0);
   const totalOutstandingDues = salesOrders.reduce((sum, o) => sum + o.balanceDue, 0);
 
+  // Mode-wise collection breakdown & all receipts list
+  const paymentsByOrder = new Map<string, CustomerPayment[]>();
+  customerPayments.forEach(p => {
+    const list = paymentsByOrder.get(p.orderId) || [];
+    list.push(p);
+    paymentsByOrder.set(p.orderId, list);
+  });
+
+  const allReceiptsList: {
+    id: string;
+    orderId: string;
+    date: string;
+    customerName: string;
+    amount: number;
+    paymentMode: PaymentMode;
+    note?: string;
+  }[] = [];
+
+  // 1. Recorded customerPayments
+  customerPayments.forEach(p => {
+    allReceiptsList.push({
+      id: p.id,
+      orderId: p.orderId,
+      date: p.date,
+      customerName: p.customerName,
+      amount: p.amount,
+      paymentMode: p.paymentMode || 'cash',
+      note: p.note
+    });
+  });
+
+  // 2. Initial advance payments on sales orders not yet captured in customerPayments
+  salesOrders.forEach(o => {
+    if (o.paidAmount > 0) {
+      const existing = paymentsByOrder.get(o.id);
+      const totalInPayments = existing ? existing.reduce((sum, p) => sum + p.amount, 0) : 0;
+      if (totalInPayments < o.paidAmount) {
+        allReceiptsList.push({
+          id: `init-${o.id}`,
+          orderId: o.id,
+          date: o.date,
+          customerName: o.customerName,
+          amount: o.paidAmount - totalInPayments,
+          paymentMode: o.paymentMode || 'cash',
+          note: o.note ? `Order advance: ${o.note}` : 'Initial payment at order booking'
+        });
+      }
+    }
+  });
+
+  allReceiptsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Aggregate cash collected by mode
+  const modeTotals = {
+    cash: allReceiptsList.filter(r => r.paymentMode === 'cash').reduce((sum, r) => sum + r.amount, 0),
+    upi: allReceiptsList.filter(r => r.paymentMode === 'upi').reduce((sum, r) => sum + r.amount, 0),
+    bank_transfer: allReceiptsList.filter(r => r.paymentMode === 'bank_transfer').reduce((sum, r) => sum + r.amount, 0),
+    cheque: allReceiptsList.filter(r => r.paymentMode === 'cheque').reduce((sum, r) => sum + r.amount, 0)
+  };
+
+  const modeCounts = {
+    cash: allReceiptsList.filter(r => r.paymentMode === 'cash').length,
+    upi: allReceiptsList.filter(r => r.paymentMode === 'upi').length,
+    bank_transfer: allReceiptsList.filter(r => r.paymentMode === 'bank_transfer').length,
+    cheque: allReceiptsList.filter(r => r.paymentMode === 'cheque').length
+  };
+
   // Filtered orders
   const filteredOrders = salesOrders
     .filter(order => {
@@ -206,6 +278,12 @@ export const SalesView: React.FC<SalesViewProps> = ({
       if (statusFilter === 'paid') {
         return order.balanceDue <= 0;
       }
+
+      if (modeFilter !== 'all') {
+        const orderMode = getOrderPaymentMode(order);
+        if (orderMode !== modeFilter) return false;
+      }
+
       return true;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -402,6 +480,10 @@ export const SalesView: React.FC<SalesViewProps> = ({
             type: 'primary'
           }}
           icon={<Boxes size={18} />}
+          onClick={() => {
+            setDrilldownModal('volume');
+            setDrilldownSearch('');
+          }}
         />
 
         <KPICard
@@ -416,6 +498,10 @@ export const SalesView: React.FC<SalesViewProps> = ({
             type: 'warn'
           }}
           icon={<IndianRupee size={18} />}
+          onClick={() => {
+            setDrilldownModal('billed');
+            setDrilldownSearch('');
+          }}
         />
 
         <KPICard
@@ -430,6 +516,10 @@ export const SalesView: React.FC<SalesViewProps> = ({
             type: 'good'
           }}
           icon={<CheckCircle2 size={18} />}
+          onClick={() => {
+            setDrilldownModal('cash');
+            setDrilldownSearch('');
+          }}
         />
 
         <KPICard
@@ -445,7 +535,196 @@ export const SalesView: React.FC<SalesViewProps> = ({
             type: totalOutstandingDues > 0 ? 'bad' : 'good'
           }}
           icon={<Clock size={18} />}
+          onClick={() => {
+            setDrilldownModal('dues');
+            setDrilldownSearch('');
+          }}
         />
+      </div>
+
+      {/* Payment Collections Inflow by Mode Strip */}
+      <div
+        className="hkb-card"
+        style={{
+          padding: '16px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          background: '#FFFFFF',
+          border: '1px solid #E2E8F0',
+          boxShadow: '0 2px 8px rgba(15, 23, 42, 0.03)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Receipt size={16} />
+            </div>
+            <div>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+                Payment Inflow by Method (कहाँ-कहाँ से कितना पैसा आया)
+              </span>
+              <span style={{ fontSize: '11.5px', color: '#64748B', marginLeft: '8px' }}>
+                Total Collected: <strong style={{ color: '#059669' }}>₹{totalPaidReceived.toLocaleString('en-IN')}</strong> ({allReceiptsList.length} receipt{allReceiptsList.length === 1 ? '' : 's'})
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              setDrilldownModal('cash');
+              setDrilldownSearch('');
+            }}
+            style={{ fontSize: '11.5px', padding: '4px 10px', color: '#7C3AED', background: '#F5F3FF', borderColor: '#DDD6FE' }}
+          >
+            <span>View All Receipts Audit</span>
+            <ArrowUpRight size={12} />
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+          {/* Cash */}
+          <div
+            onClick={() => setModeFilter(modeFilter === 'cash' ? 'all' : 'cash')}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: modeFilter === 'cash' ? '#ECFDF5' : '#FAFAFA',
+              border: modeFilter === 'cash' ? '2px solid #059669' : '1px solid #E2E8F0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            title="Click to filter ledger by Cash orders"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Banknote size={16} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>CASH RECEIVED</div>
+                <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: '#059669' }}>
+                  ₹{modeTotals.cash.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>
+                {totalPaidReceived > 0 ? `${Math.round((modeTotals.cash / totalPaidReceived) * 100)}%` : '0%'}
+              </span>
+              <div style={{ fontSize: '10px', color: '#94A3B8' }}>{modeCounts.cash} receipts</div>
+            </div>
+          </div>
+
+          {/* Online / UPI */}
+          <div
+            onClick={() => setModeFilter(modeFilter === 'upi' ? 'all' : 'upi')}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: modeFilter === 'upi' ? '#F5F3FF' : '#FAFAFA',
+              border: modeFilter === 'upi' ? '2px solid #7C3AED' : '1px solid #E2E8F0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            title="Click to filter ledger by Online / UPI orders"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Smartphone size={16} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>ONLINE / UPI</div>
+                <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: '#7C3AED' }}>
+                  ₹{modeTotals.upi.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>
+                {totalPaidReceived > 0 ? `${Math.round((modeTotals.upi / totalPaidReceived) * 100)}%` : '0%'}
+              </span>
+              <div style={{ fontSize: '10px', color: '#94A3B8' }}>{modeCounts.upi} receipts</div>
+            </div>
+          </div>
+
+          {/* Net Banking */}
+          <div
+            onClick={() => setModeFilter(modeFilter === 'bank_transfer' ? 'all' : 'bank_transfer')}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: modeFilter === 'bank_transfer' ? '#EFF6FF' : '#FAFAFA',
+              border: modeFilter === 'bank_transfer' ? '2px solid #2563EB' : '1px solid #E2E8F0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            title="Click to filter ledger by Net Banking orders"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Landmark size={16} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>NET BANKING</div>
+                <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: '#2563EB' }}>
+                  ₹{modeTotals.bank_transfer.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>
+                {totalPaidReceived > 0 ? `${Math.round((modeTotals.bank_transfer / totalPaidReceived) * 100)}%` : '0%'}
+              </span>
+              <div style={{ fontSize: '10px', color: '#94A3B8' }}>{modeCounts.bank_transfer} receipts</div>
+            </div>
+          </div>
+
+          {/* Cheque */}
+          <div
+            onClick={() => setModeFilter(modeFilter === 'cheque' ? 'all' : 'cheque')}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: modeFilter === 'cheque' ? '#FFFBEB' : '#FAFAFA',
+              border: modeFilter === 'cheque' ? '2px solid #D97706' : '1px solid #E2E8F0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            title="Click to filter ledger by Cheque orders"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FFFBEB', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={16} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>CHEQUE CLEARING</div>
+                <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: '#D97706' }}>
+                  ₹{modeTotals.cheque.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>
+                {totalPaidReceived > 0 ? `${Math.round((modeTotals.cheque / totalPaidReceived) * 100)}%` : '0%'}
+              </span>
+              <div style={{ fontSize: '10px', color: '#94A3B8' }}>{modeCounts.cheque} receipts</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -472,28 +751,45 @@ export const SalesView: React.FC<SalesViewProps> = ({
           />
         </div>
 
-        <div className="segmented-control" style={{ flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={`segmented-btn ${statusFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('all')}
-          >
-            All Orders ({salesOrders.length})
-          </button>
-          <button
-            type="button"
-            className={`segmented-btn ${statusFilter === 'due' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('due')}
-          >
-            Pending Dues ({salesOrders.filter(o => o.balanceDue > 0).length})
-          </button>
-          <button
-            type="button"
-            className={`segmented-btn ${statusFilter === 'paid' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('paid')}
-          >
-            Settled / Paid ({salesOrders.filter(o => o.balanceDue <= 0).length})
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Status filters */}
+          <div className="segmented-control" style={{ flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`segmented-btn ${statusFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('all')}
+            >
+              All Orders ({salesOrders.length})
+            </button>
+            <button
+              type="button"
+              className={`segmented-btn ${statusFilter === 'due' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('due')}
+            >
+              Pending Dues ({salesOrders.filter(o => o.balanceDue > 0).length})
+            </button>
+            <button
+              type="button"
+              className={`segmented-btn ${statusFilter === 'paid' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('paid')}
+            >
+              Settled / Paid ({salesOrders.filter(o => o.balanceDue <= 0).length})
+            </button>
+          </div>
+
+          {/* Mode filter dropdown or badge */}
+          {modeFilter !== 'all' && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setModeFilter('all')}
+              style={{ fontSize: '11px', padding: '4px 8px', color: '#7C3AED', background: '#F5F3FF', borderColor: '#DDD6FE' }}
+              title="Clear mode filter"
+            >
+              <span>Mode: {modeFilter.toUpperCase()}</span>
+              <X size={12} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1049,6 +1345,432 @@ export const SalesView: React.FC<SalesViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Drilldown Detail Modal for KPI Cards (Detailed Audit List) */}
+      {drilldownModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(5px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+          onClick={() => setDrilldownModal(null)}
+        >
+          <div
+            className="hkb-card"
+            style={{
+              width: '100%',
+              maxWidth: '860px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '0',
+              overflow: 'hidden',
+              background: '#FFFFFF',
+              boxShadow: '0 24px 60px rgba(15, 23, 42, 0.25)',
+              borderRadius: '16px'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '20px 24px 14px',
+                borderBottom: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                background: '#FAFAFD'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {drilldownModal === 'volume' && <Boxes size={20} color="#7C3AED" />}
+                  {drilldownModal === 'billed' && <IndianRupee size={20} color="#D97706" />}
+                  {drilldownModal === 'cash' && <CheckCircle2 size={20} color="#059669" />}
+                  {drilldownModal === 'dues' && <Clock size={20} color="#DC2626" />}
+
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
+                    {drilldownModal === 'volume' && 'Total Bricks Sold — Dispatch Fulfillment Log'}
+                    {drilldownModal === 'billed' && 'Gross Invoicing & Sales Ledger Audit'}
+                    {drilldownModal === 'cash' && 'Cash & Payment Inflow Audit (कहाँ से कितना पैसा आया)'}
+                    {drilldownModal === 'dues' && 'Customer Outstanding Dues / Recovery List (उधारी ग्राहक सूची)'}
+                  </h3>
+                </div>
+                <p style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px' }}>
+                  {drilldownModal === 'volume' && 'Complete breakdown of all brick order dispatches, customers, and delivery sites.'}
+                  {drilldownModal === 'billed' && 'All issued customer bills, invoicing values, and payment realization status.'}
+                  {drilldownModal === 'cash' && 'Chronological audit of every payment received with mode (Cash, UPI, Net Banking, Cheque).'}
+                  {drilldownModal === 'dues' && 'List of all customer accounts with unpaid balance due and immediate payment settlement.'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDrilldownModal(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: '4px' }}
+                title="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Quick Switch Tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 24px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="segmented-control">
+                <button
+                  type="button"
+                  className={`segmented-btn ${drilldownModal === 'volume' ? 'active' : ''}`}
+                  onClick={() => setDrilldownModal('volume')}
+                >
+                  Bricks Sold ({salesOrders.length})
+                </button>
+                <button
+                  type="button"
+                  className={`segmented-btn ${drilldownModal === 'billed' ? 'active' : ''}`}
+                  onClick={() => setDrilldownModal('billed')}
+                >
+                  Gross Billed (₹{totalBilledRevenue.toLocaleString('en-IN')})
+                </button>
+                <button
+                  type="button"
+                  className={`segmented-btn ${drilldownModal === 'cash' ? 'active' : ''}`}
+                  onClick={() => setDrilldownModal('cash')}
+                >
+                  Cash & UPI Inflow (₹{totalPaidReceived.toLocaleString('en-IN')})
+                </button>
+                <button
+                  type="button"
+                  className={`segmented-btn ${drilldownModal === 'dues' ? 'active' : ''}`}
+                  onClick={() => setDrilldownModal('dues')}
+                >
+                  Pending Dues ({salesOrders.filter(o => o.balanceDue > 0).length})
+                </button>
+              </div>
+
+              <div style={{ position: 'relative', width: '220px' }}>
+                <Search size={13} style={{ position: 'absolute', left: '10px', top: '9px', color: '#94A3B8' }} />
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ paddingLeft: '28px', paddingRight: '8px', paddingTop: '4px', paddingBottom: '4px', fontSize: '12px' }}
+                  placeholder="Filter list..."
+                  value={drilldownSearch}
+                  onChange={e => setDrilldownSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Modal Body with scroll */}
+            <div style={{ padding: '18px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* TAB 1: CASH & PAYMENT INFLOW AUDIT */}
+              {drilldownModal === 'cash' && (
+                <>
+                  {/* 4 Mode summary pills */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                    <div style={{ padding: '10px 14px', borderRadius: '10px', background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                      <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>💵 CASH</span>
+                      <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#059669' }}>
+                        ₹{modeTotals.cash.toLocaleString('en-IN')}
+                      </div>
+                      <span style={{ fontSize: '10.5px', color: '#64748B' }}>{modeCounts.cash} payments</span>
+                    </div>
+
+                    <div style={{ padding: '10px 14px', borderRadius: '10px', background: '#F5F3FF', border: '1px solid #DDD6FE' }}>
+                      <span style={{ fontSize: '11px', color: '#7C3AED', fontWeight: 700 }}>📱 ONLINE / UPI</span>
+                      <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#7C3AED' }}>
+                        ₹{modeTotals.upi.toLocaleString('en-IN')}
+                      </div>
+                      <span style={{ fontSize: '10.5px', color: '#64748B' }}>{modeCounts.upi} payments</span>
+                    </div>
+
+                    <div style={{ padding: '10px 14px', borderRadius: '10px', background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+                      <span style={{ fontSize: '11px', color: '#2563EB', fontWeight: 700 }}>🏛️ NET BANKING</span>
+                      <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#2563EB' }}>
+                        ₹{modeTotals.bank_transfer.toLocaleString('en-IN')}
+                      </div>
+                      <span style={{ fontSize: '10.5px', color: '#64748B' }}>{modeCounts.bank_transfer} payments</span>
+                    </div>
+
+                    <div style={{ padding: '10px 14px', borderRadius: '10px', background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                      <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 700 }}>📝 CHEQUE</span>
+                      <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#D97706' }}>
+                        ₹{modeTotals.cheque.toLocaleString('en-IN')}
+                      </div>
+                      <span style={{ fontSize: '10.5px', color: '#64748B' }}>{modeCounts.cheque} payments</span>
+                    </div>
+                  </div>
+
+                  {/* Detailed Receipts Table */}
+                  <div className="hkb-table-wrapper" style={{ maxHeight: '380px' }}>
+                    <table className="hkb-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Amount Received</th>
+                          <th>Payment Mode</th>
+                          <th>Remarks / Reference</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allReceiptsList
+                          .filter(r =>
+                            !drilldownSearch ||
+                            r.customerName.toLowerCase().includes(drilldownSearch.toLowerCase()) ||
+                            (r.note && r.note.toLowerCase().includes(drilldownSearch.toLowerCase())) ||
+                            r.paymentMode.toLowerCase().includes(drilldownSearch.toLowerCase())
+                          )
+                          .map((r, i) => (
+                            <tr key={`${r.id}-${i}`}>
+                              <td style={{ fontWeight: 600 }}>{r.date}</td>
+                              <td style={{ fontWeight: 700, color: '#0F172A' }}>{r.customerName}</td>
+                              <td className="tabular-nums" style={{ fontWeight: 800, color: '#059669', fontSize: '13.5px' }}>
+                                ₹{r.amount.toLocaleString('en-IN')}
+                              </td>
+                              <td>{renderPaymentModeBadge(r.paymentMode)}</td>
+                              <td style={{ color: '#64748B', fontSize: '12px' }}>{r.note || '—'}</td>
+                            </tr>
+                          ))}
+                        {allReceiptsList.length === 0 && (
+                          <tr>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#94A3B8' }}>
+                              No payments recorded yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* TAB 2: PENDING DUES / UDHARI LIST */}
+              {drilldownModal === 'dues' && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '10px' }}>
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700, textTransform: 'uppercase' }}>
+                        TOTAL OUTSTANDING RECOVERY
+                      </span>
+                      <div className="tabular-nums" style={{ fontSize: '24px', fontWeight: 800, color: '#DC2626' }}>
+                        ₹{totalOutstandingDues.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <span className="badge badge-bad">
+                      {salesOrders.filter(o => o.balanceDue > 0).length} Customers Pending
+                    </span>
+                  </div>
+
+                  <div className="hkb-table-wrapper" style={{ maxHeight: '380px' }}>
+                    <table className="hkb-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Contact</th>
+                          <th>Site</th>
+                          <th>Total Bill</th>
+                          <th>Paid</th>
+                          <th>Outstanding Due</th>
+                          <th style={{ textAlign: 'right' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {salesOrders
+                          .filter(o => o.balanceDue > 0)
+                          .filter(o =>
+                            !drilldownSearch ||
+                            o.customerName.toLowerCase().includes(drilldownSearch.toLowerCase()) ||
+                            (o.customerPhone && o.customerPhone.includes(drilldownSearch)) ||
+                            (o.siteLocation && o.siteLocation.toLowerCase().includes(drilldownSearch.toLowerCase()))
+                          )
+                          .map(order => (
+                            <tr key={order.id} className="row-loss">
+                              <td style={{ fontWeight: 600 }}>{order.date}</td>
+                              <td style={{ fontWeight: 700, color: '#0F172A' }}>{order.customerName}</td>
+                              <td style={{ fontSize: '11.5px', color: '#64748B' }}>{order.customerPhone || '—'}</td>
+                              <td style={{ fontSize: '11.5px', color: '#64748B' }}>{order.siteLocation || '—'}</td>
+                              <td className="tabular-nums">₹{order.totalAmount.toLocaleString('en-IN')}</td>
+                              <td className="tabular-nums" style={{ color: '#059669', fontWeight: 600 }}>
+                                ₹{order.paidAmount.toLocaleString('en-IN')}
+                              </td>
+                              <td className="tabular-nums" style={{ fontWeight: 800, color: '#DC2626', fontSize: '13.5px' }}>
+                                ₹{order.balanceDue.toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm"
+                                  style={{ padding: '3px 9px', fontSize: '11.5px' }}
+                                  onClick={() => {
+                                    setDrilldownModal(null);
+                                    handleOpenPaymentModal(order);
+                                  }}
+                                >
+                                  <IndianRupee size={12} />
+                                  <span>Record Payment</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        {salesOrders.filter(o => o.balanceDue > 0).length === 0 && (
+                          <tr>
+                            <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: '#059669', fontWeight: 600 }}>
+                              🎉 All customer accounts are completely settled clean!
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* TAB 3: VOLUME SOLD BREAKDOWN */}
+              {drilldownModal === 'volume' && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: '10px' }}>
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#7C3AED', fontWeight: 700, textTransform: 'uppercase' }}>
+                        TOTAL VOLUME DISPATCHED
+                      </span>
+                      <div className="tabular-nums" style={{ fontSize: '24px', fontWeight: 800, color: '#7C3AED' }}>
+                        {totalBricksSold.toLocaleString('en-IN')} pcs
+                      </div>
+                    </div>
+                    <span className="badge badge-primary">
+                      {salesOrders.length} Orders Fulfilled
+                    </span>
+                  </div>
+
+                  <div className="hkb-table-wrapper" style={{ maxHeight: '380px' }}>
+                    <table className="hkb-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Delivery Site</th>
+                          <th>Bricks Quantity</th>
+                          <th>Rate / Brick</th>
+                          <th>Total Bill</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {salesOrders
+                          .filter(o =>
+                            !drilldownSearch ||
+                            o.customerName.toLowerCase().includes(drilldownSearch.toLowerCase()) ||
+                            (o.siteLocation && o.siteLocation.toLowerCase().includes(drilldownSearch.toLowerCase()))
+                          )
+                          .map(order => (
+                            <tr key={order.id}>
+                              <td style={{ fontWeight: 600 }}>{order.date}</td>
+                              <td style={{ fontWeight: 700, color: '#0F172A' }}>{order.customerName}</td>
+                              <td style={{ fontSize: '12px', color: '#64748B' }}>{order.siteLocation || 'Yard'}</td>
+                              <td className="tabular-nums" style={{ fontWeight: 800, color: '#7C3AED' }}>
+                                {order.quantity.toLocaleString('en-IN')} pcs
+                              </td>
+                              <td className="tabular-nums">₹{order.rate.toFixed(2)}</td>
+                              <td className="tabular-nums" style={{ fontWeight: 700 }}>
+                                ₹{order.totalAmount.toLocaleString('en-IN')}
+                              </td>
+                              <td>
+                                {order.paymentStatus === 'paid' && <span className="badge badge-good">PAID</span>}
+                                {order.paymentStatus === 'partial' && <span className="badge badge-warn">PARTIAL</span>}
+                                {order.paymentStatus === 'due' && <span className="badge badge-bad">DUE</span>}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* TAB 4: BILLED REVENUE BREAKDOWN */}
+              {drilldownModal === 'billed' && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px' }}>
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 700, textTransform: 'uppercase' }}>
+                        GROSS BILLED REVENUE
+                      </span>
+                      <div className="tabular-nums" style={{ fontSize: '24px', fontWeight: 800, color: '#D97706' }}>
+                        ₹{totalBilledRevenue.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <span className="badge badge-warn">
+                      Realization: {totalBilledRevenue > 0 ? Math.round((totalPaidReceived / totalBilledRevenue) * 100) : 100}%
+                    </span>
+                  </div>
+
+                  <div className="hkb-table-wrapper" style={{ maxHeight: '380px' }}>
+                    <table className="hkb-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Quantity</th>
+                          <th>Rate</th>
+                          <th>Total Bill</th>
+                          <th>Paid Amount</th>
+                          <th>Balance Due</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {salesOrders
+                          .filter(o =>
+                            !drilldownSearch ||
+                            o.customerName.toLowerCase().includes(drilldownSearch.toLowerCase()) ||
+                            (o.siteLocation && o.siteLocation.toLowerCase().includes(drilldownSearch.toLowerCase()))
+                          )
+                          .map(order => (
+                            <tr key={order.id}>
+                              <td style={{ fontWeight: 600 }}>{order.date}</td>
+                              <td style={{ fontWeight: 700, color: '#0F172A' }}>{order.customerName}</td>
+                              <td className="tabular-nums">{order.quantity.toLocaleString('en-IN')} pcs</td>
+                              <td className="tabular-nums">₹{order.rate.toFixed(2)}</td>
+                              <td className="tabular-nums" style={{ fontWeight: 800 }}>
+                                ₹{order.totalAmount.toLocaleString('en-IN')}
+                              </td>
+                              <td className="tabular-nums" style={{ color: '#059669', fontWeight: 600 }}>
+                                ₹{order.paidAmount.toLocaleString('en-IN')}
+                              </td>
+                              <td className="tabular-nums" style={{ color: order.balanceDue > 0 ? '#DC2626' : '#64748B', fontWeight: 700 }}>
+                                ₹{order.balanceDue.toLocaleString('en-IN')}
+                              </td>
+                              <td>
+                                {order.paymentStatus === 'paid' && <span className="badge badge-good">PAID</span>}
+                                {order.paymentStatus === 'partial' && <span className="badge badge-warn">PARTIAL</span>}
+                                {order.paymentStatus === 'due' && <span className="badge badge-bad">DUE</span>}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '12px 24px', borderTop: '1px solid #E2E8F0', background: '#FAFAFD', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDrilldownModal(null)}>
+                Close Audit Window
+              </button>
+            </div>
           </div>
         </div>
       )}

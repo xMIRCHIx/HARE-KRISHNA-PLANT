@@ -20,7 +20,8 @@ import {
   Banknote,
   Smartphone,
   Landmark,
-  FileText
+  FileText,
+  IndianRupee
 } from 'lucide-react';
 import {
   ProductionEntry,
@@ -32,7 +33,7 @@ import {
   PaymentMode,
   PaymentStatus
 } from '../types';
-import { calculatePlantSummary } from '../lib/calculations';
+import { calculatePlantSummary, calculateEntry } from '../lib/calculations';
 import { KPICard } from './KPICard';
 
 interface DashboardViewProps {
@@ -85,6 +86,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [payMode, setPayMode] = useState<PaymentMode>('cash');
   const [payNote, setPayNote] = useState('');
 
+  // Dashboard KPI Drilldown Modal State
+  const [dashboardModal, setDashboardModal] = useState<'production' | 'stock' | 'revenue' | 'volume' | 'profit' | null>(null);
+  const [dashModalSearch, setDashModalSearch] = useState('');
+  const [dashModeFilter, setDashModeFilter] = useState<PaymentMode | 'all'>('all');
+
   // Sales & receivables calculations
   const totalOutstandingDues = salesOrders.reduce((sum, o) => sum + o.balanceDue, 0);
   const totalBricksSoldInOrders = salesOrders.reduce((sum, o) => sum + o.quantity, 0);
@@ -93,6 +99,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const displaySoldVolume = totalBricksSoldInOrders > 0 ? totalBricksSoldInOrders : summary.totalSold;
   const displayRevenue = totalSalesRevenueFromOrders > 0 ? totalSalesRevenueFromOrders : summary.totalRevenue;
+
+  // Mode-wise collection breakdown & all receipts list
+  const paymentsByOrder = new Map<string, CustomerPayment[]>();
+  customerPayments.forEach(p => {
+    const list = paymentsByOrder.get(p.orderId) || [];
+    list.push(p);
+    paymentsByOrder.set(p.orderId, list);
+  });
+
+  const allReceiptsList: {
+    id: string;
+    orderId: string;
+    date: string;
+    customerName: string;
+    amount: number;
+    paymentMode: PaymentMode;
+    note?: string;
+  }[] = [];
+
+  // 1. Recorded customerPayments
+  customerPayments.forEach(p => {
+    allReceiptsList.push({
+      id: p.id,
+      orderId: p.orderId,
+      date: p.date,
+      customerName: p.customerName,
+      amount: p.amount,
+      paymentMode: p.paymentMode || 'cash',
+      note: p.note
+    });
+  });
+
+  // 2. Initial advance payments on sales orders not yet captured in customerPayments
+  salesOrders.forEach(o => {
+    if (o.paidAmount > 0) {
+      const existing = paymentsByOrder.get(o.id);
+      const totalInPayments = existing ? existing.reduce((sum, p) => sum + p.amount, 0) : 0;
+      if (totalInPayments < o.paidAmount) {
+        allReceiptsList.push({
+          id: `init-${o.id}`,
+          orderId: o.id,
+          date: o.date,
+          customerName: o.customerName,
+          amount: o.paidAmount - totalInPayments,
+          paymentMode: (o.paymentMode as PaymentMode) || 'cash',
+          note: o.note ? `Order advance: ${o.note}` : 'Advance paid at booking'
+        });
+      }
+    }
+  });
+
+  allReceiptsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const modeTotals = {
+    cash: allReceiptsList.filter(r => r.paymentMode === 'cash').reduce((sum, r) => sum + r.amount, 0),
+    upi: allReceiptsList.filter(r => r.paymentMode === 'upi').reduce((sum, r) => sum + r.amount, 0),
+    bank_transfer: allReceiptsList.filter(r => r.paymentMode === 'bank_transfer').reduce((sum, r) => sum + r.amount, 0),
+    cheque: allReceiptsList.filter(r => r.paymentMode === 'cheque').reduce((sum, r) => sum + r.amount, 0)
+  };
+
+  const modeCounts = {
+    cash: allReceiptsList.filter(r => r.paymentMode === 'cash').length,
+    upi: allReceiptsList.filter(r => r.paymentMode === 'upi').length,
+    bank_transfer: allReceiptsList.filter(r => r.paymentMode === 'bank_transfer').length,
+    cheque: allReceiptsList.filter(r => r.paymentMode === 'cheque').length
+  };
 
   // Recent 5 sales orders for the dashboard widget
   const recentSales = salesOrders.slice(0, 8);
@@ -508,7 +580,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Hexabox 3-Column Command Hub: Hero Revenue, 7-Day Velocity Bar Chart, and Operations Health */}
       <div className="hexabox-top-command-grid">
         {/* Card 1: Hexabox 3D Violet Hero Card (Revenue & Net Margin) */}
-        <div className="hexabox-hero-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '210px' }}>
+        <div
+          className="hexabox-hero-card"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            minHeight: '210px',
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}
+          onClick={() => {
+            setDashModeFilter('all');
+            setDashboardModal('revenue');
+            setDashModalSearch('');
+          }}
+          title="Click to view full Revenue & Inflows Breakdown (कहाँ से कितना पैसा आया)"
+        >
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
               <div>
@@ -516,8 +604,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255, 255, 255, 0.85)' }}>
                     Total Sales Revenue
                   </span>
-                  <span style={{ background: 'rgba(255, 255, 255, 0.2)', fontSize: '10px', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, color: '#FFFFFF' }}>
-                    Live Shift
+                  <span style={{ background: 'rgba(255, 255, 255, 0.2)', fontSize: '10px', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, color: '#FFFFFF', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    <span>Audit Inflow</span>
+                    <ArrowUpRight size={10} />
                   </span>
                 </div>
                 <div className="tabular-nums" style={{ fontSize: '34px', fontWeight: 800, marginTop: '6px', letterSpacing: '-0.025em', color: '#FFFFFF' }}>
@@ -696,6 +785,279 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* Payment Inflow Breakdown Strip by Method (कहाँ-कहाँ से कितना पैसा आया) */}
+      <div
+        className="hkb-card"
+        style={{
+          padding: '14px 18px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '8px',
+                background: '#ECFDF5',
+                color: '#059669',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Banknote size={16} />
+            </div>
+            <div>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>
+                Payment Inflow by Method
+              </span>
+              <span style={{ fontSize: '12px', color: '#64748B', marginLeft: '6px' }}>
+                (कहाँ-कहाँ से कितना पैसा आया)
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '3px 9px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            onClick={() => {
+              setDashModeFilter('all');
+              setDashboardModal('revenue');
+              setDashModalSearch('');
+            }}
+          >
+            <span>View All Receipts Audit</span>
+            <ArrowUpRight size={12} />
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px' }}>
+          {/* Cash */}
+          <div
+            onClick={() => {
+              setDashModeFilter('cash');
+              setDashboardModal('revenue');
+              setDashModalSearch('');
+            }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: '#ECFDF5',
+              border: '1.5px solid #A7F3D0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+            }}
+            title="Click to view Cash payments"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '8px',
+                  background: '#10B981',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Banknote size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Cash / नकद
+                </div>
+                <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#065F46', marginTop: '1px' }}>
+                  ₹{modeTotals.cash.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#047857' }}>
+                {totalCashCollected > 0 ? Math.round((modeTotals.cash / totalCashCollected) * 100) : 0}%
+              </span>
+              <div style={{ fontSize: '10px', color: '#64748B' }}>
+                {modeCounts.cash} receipts
+              </div>
+            </div>
+          </div>
+
+          {/* UPI */}
+          <div
+            onClick={() => {
+              setDashModeFilter('upi');
+              setDashboardModal('revenue');
+              setDashModalSearch('');
+            }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: '#F5F3FF',
+              border: '1.5px solid #DDD6FE',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+            }}
+            title="Click to view Online/UPI payments"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '8px',
+                  background: '#7C3AED',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Smartphone size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#6D28D9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Online / UPI
+                </div>
+                <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#5B21B6', marginTop: '1px' }}>
+                  ₹{modeTotals.upi.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#6D28D9' }}>
+                {totalCashCollected > 0 ? Math.round((modeTotals.upi / totalCashCollected) * 100) : 0}%
+              </span>
+              <div style={{ fontSize: '10px', color: '#64748B' }}>
+                {modeCounts.upi} receipts
+              </div>
+            </div>
+          </div>
+
+          {/* Net Banking */}
+          <div
+            onClick={() => {
+              setDashModeFilter('bank_transfer');
+              setDashboardModal('revenue');
+              setDashModalSearch('');
+            }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: '#EFF6FF',
+              border: '1.5px solid #BFDBFE',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+            }}
+            title="Click to view Net Banking payments"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '8px',
+                  background: '#2563EB',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Landmark size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#1D4ED8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Net Banking
+                </div>
+                <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#1E40AF', marginTop: '1px' }}>
+                  ₹{modeTotals.bank_transfer.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#1D4ED8' }}>
+                {totalCashCollected > 0 ? Math.round((modeTotals.bank_transfer / totalCashCollected) * 100) : 0}%
+              </span>
+              <div style={{ fontSize: '10px', color: '#64748B' }}>
+                {modeCounts.bank_transfer} receipts
+              </div>
+            </div>
+          </div>
+
+          {/* Cheque */}
+          <div
+            onClick={() => {
+              setDashModeFilter('cheque');
+              setDashboardModal('revenue');
+              setDashModalSearch('');
+            }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: '#FFFBEB',
+              border: '1.5px solid #FDE68A',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+            }}
+            title="Click to view Cheque payments"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '8px',
+                  background: '#D97706',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <FileText size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Cheque
+                </div>
+                <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#92400E', marginTop: '1px' }}>
+                  ₹{modeTotals.cheque.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#B45309' }}>
+                {totalCashCollected > 0 ? Math.round((modeTotals.cheque / totalCashCollected) * 100) : 0}%
+              </span>
+              <div style={{ fontSize: '10px', color: '#64748B' }}>
+                {modeCounts.cheque} receipts
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 4 Operations KPI Cards Row */}
       <div className="dashboard-kpi-grid">
         {/* Card 1: Today's Output */}
@@ -710,6 +1072,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             type: 'primary'
           }}
           icon={<Boxes size={18} />}
+          onClick={() => {
+            setDashboardModal('production');
+            setDashModalSearch('');
+          }}
         />
 
         {/* Card 2: Yard Inventory */}
@@ -724,6 +1090,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             type: summary.runningStock > 10000 ? 'good' : 'warn'
           }}
           icon={<Boxes size={18} />}
+          onClick={() => {
+            setDashboardModal('stock');
+            setDashModalSearch('');
+          }}
         />
 
         {/* Card 3: Total Bricks Sold */}
@@ -738,6 +1108,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             type: 'primary'
           }}
           icon={<TrendingUp size={18} />}
+          onClick={() => {
+            setDashboardModal('volume');
+            setDashModalSearch('');
+          }}
         />
 
         {/* Card 4: Net Plant Profit */}
@@ -754,6 +1128,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             type: summary.totalNetProfit >= 0 ? 'good' : 'bad'
           }}
           icon={summary.totalNetProfit >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+          onClick={() => {
+            setDashboardModal('profit');
+            setDashModalSearch('');
+          }}
         />
       </div>
 
@@ -1599,6 +1977,658 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Comprehensive Dashboard Drilldown Audit Modal */}
+      {dashboardModal && (
+        <div
+          className="modal-overlay"
+          onClick={e => {
+            if (e.target === e.currentTarget) setDashboardModal(null);
+          }}
+        >
+          <div
+            className="modal-content"
+            style={{
+              maxWidth: '920px',
+              width: '95%',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '18px',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '8px',
+                      background:
+                        dashboardModal === 'revenue'
+                          ? '#ECFDF5'
+                          : dashboardModal === 'production'
+                          ? '#F5F3FF'
+                          : dashboardModal === 'stock'
+                          ? '#EFF6FF'
+                          : dashboardModal === 'volume'
+                          ? '#F5F3FF'
+                          : '#ECFDF5',
+                      color:
+                        dashboardModal === 'revenue'
+                          ? '#059669'
+                          : dashboardModal === 'production'
+                          ? '#7C3AED'
+                          : dashboardModal === 'stock'
+                          ? '#2563EB'
+                          : dashboardModal === 'volume'
+                          ? '#7C3AED'
+                          : '#059669',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {dashboardModal === 'revenue' && <Banknote size={17} />}
+                    {dashboardModal === 'production' && <Boxes size={17} />}
+                    {dashboardModal === 'stock' && <Layers size={17} />}
+                    {dashboardModal === 'volume' && <TrendingUp size={17} />}
+                    {dashboardModal === 'profit' && <IndianRupee size={17} />}
+                  </span>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
+                    {dashboardModal === 'revenue' && 'Cash Inflows & Payment Audit (कहाँ से कितना पैसा आया)'}
+                    {dashboardModal === 'production' && 'Daily Shift Production Ledger Log'}
+                    {dashboardModal === 'stock' && 'Live Yard Inventory & Stock Balance'}
+                    {dashboardModal === 'volume' && 'Customer Sales Orders & Dispatch Log'}
+                    {dashboardModal === 'profit' && 'Plant Net Profit & Operational Cost Breakdown'}
+                  </h3>
+                </div>
+                <p style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
+                  {dashboardModal === 'revenue' && 'Complete audit list of all payments received from customers, payment modes, and balance reconciliation.'}
+                  {dashboardModal === 'production' && 'Shift manufacturing log with brick counts, raw materials consumed (cement, stone dust, fly ash), and labor costs.'}
+                  {dashboardModal === 'stock' && 'Real-time brick inventory reconciliation between opening stock, manufacturing output, and customer dispatches.'}
+                  {dashboardModal === 'volume' && 'Dispatched orders, buyer contact details, delivery sites, quantities, and payment status.'}
+                  {dashboardModal === 'profit' && 'Financial breakdown of gross revenue, raw materials & labor costs, overhead expenses, and bottom-line margin.'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDashboardModal(null)}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748B',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* TAB 1: REVENUE & CASH INFLOWS */}
+            {dashboardModal === 'revenue' && (
+              <>
+                {/* 4 Mode Breakdown Boxes */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px' }}>
+                  <div
+                    onClick={() => setDashModeFilter('cash')}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: '#ECFDF5',
+                      border: dashModeFilter === 'cash' ? '2px solid #059669' : '1px solid #A7F3D0',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>💵 CASH / नकद</span>
+                    <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#059669' }}>
+                      ₹{modeTotals.cash.toLocaleString('en-IN')}
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>{modeCounts.cash} payments</span>
+                  </div>
+
+                  <div
+                    onClick={() => setDashModeFilter('upi')}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: '#F5F3FF',
+                      border: dashModeFilter === 'upi' ? '2px solid #7C3AED' : '1px solid #DDD6FE',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', color: '#7C3AED', fontWeight: 700 }}>📱 ONLINE / UPI</span>
+                    <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#7C3AED' }}>
+                      ₹{modeTotals.upi.toLocaleString('en-IN')}
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>{modeCounts.upi} payments</span>
+                  </div>
+
+                  <div
+                    onClick={() => setDashModeFilter('bank_transfer')}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: '#EFF6FF',
+                      border: dashModeFilter === 'bank_transfer' ? '2px solid #2563EB' : '1px solid #BFDBFE',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', color: '#2563EB', fontWeight: 700 }}>🏛️ NET BANKING</span>
+                    <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#2563EB' }}>
+                      ₹{modeTotals.bank_transfer.toLocaleString('en-IN')}
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>{modeCounts.bank_transfer} payments</span>
+                  </div>
+
+                  <div
+                    onClick={() => setDashModeFilter('cheque')}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: '#FFFBEB',
+                      border: dashModeFilter === 'cheque' ? '2px solid #D97706' : '1px solid #FDE68A',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 700 }}>📝 CHEQUE</span>
+                    <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#D97706' }}>
+                      ₹{modeTotals.cheque.toLocaleString('en-IN')}
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>{modeCounts.cheque} payments</span>
+                  </div>
+                </div>
+
+                {/* Filter / Search Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ position: 'relative', flex: '1', minWidth: '220px' }}>
+                    <Search size={14} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Search payer, remarks, or amount..."
+                      value={dashModalSearch}
+                      onChange={e => setDashModalSearch(e.target.value)}
+                      style={{ paddingLeft: '32px', height: '36px', fontSize: '12.5px' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDashModeFilter('all')}
+                      className={`btn btn-sm ${dashModeFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '4px 9px', fontSize: '11.5px' }}
+                    >
+                      All ({allReceiptsList.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDashModeFilter('cash')}
+                      className={`btn btn-sm ${dashModeFilter === 'cash' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '4px 9px', fontSize: '11.5px' }}
+                    >
+                      Cash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDashModeFilter('upi')}
+                      className={`btn btn-sm ${dashModeFilter === 'upi' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '4px 9px', fontSize: '11.5px' }}
+                    >
+                      UPI
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDashModeFilter('bank_transfer')}
+                      className={`btn btn-sm ${dashModeFilter === 'bank_transfer' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '4px 9px', fontSize: '11.5px' }}
+                    >
+                      Bank
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDashModeFilter('cheque')}
+                      className={`btn btn-sm ${dashModeFilter === 'cheque' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '4px 9px', fontSize: '11.5px' }}
+                    >
+                      Cheque
+                    </button>
+                  </div>
+                </div>
+
+                {/* Receipts Table */}
+                <div className="hkb-table-wrapper" style={{ maxHeight: '380px' }}>
+                  <table className="hkb-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Customer / Source</th>
+                        <th>Amount Received</th>
+                        <th>Payment Mode</th>
+                        <th>Remarks / Reference</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allReceiptsList
+                        .filter(r => dashModeFilter === 'all' || r.paymentMode === dashModeFilter)
+                        .filter(r =>
+                          !dashModalSearch ||
+                          r.customerName.toLowerCase().includes(dashModalSearch.toLowerCase()) ||
+                          (r.note && r.note.toLowerCase().includes(dashModalSearch.toLowerCase())) ||
+                          r.paymentMode.toLowerCase().includes(dashModalSearch.toLowerCase())
+                        )
+                        .map((r, i) => (
+                          <tr key={`${r.id}-${i}`}>
+                            <td style={{ fontWeight: 600 }}>{r.date}</td>
+                            <td style={{ fontWeight: 700, color: '#0F172A' }}>{r.customerName}</td>
+                            <td className="tabular-nums" style={{ fontWeight: 800, color: '#059669', fontSize: '13.5px' }}>
+                              ₹{r.amount.toLocaleString('en-IN')}
+                            </td>
+                            <td>{renderPaymentModeBadge(r.paymentMode)}</td>
+                            <td style={{ color: '#64748B', fontSize: '12px' }}>{r.note || '—'}</td>
+                          </tr>
+                        ))}
+                      {allReceiptsList.length === 0 && (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#94A3B8' }}>
+                            No customer receipts logged yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #E2E8F0', paddingTop: '12px' }}>
+                  {onNavigateToSales && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        setDashboardModal(null);
+                        onNavigateToSales();
+                      }}
+                    >
+                      <span>Open Full Sales Ledger</span>
+                      <ArrowUpRight size={12} />
+                    </button>
+                  )}
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setDashboardModal(null)}>
+                    Done
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* TAB 2: PRODUCTION LOG */}
+            {dashboardModal === 'production' && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                  <div style={{ padding: '10px 14px', borderRadius: '10px', background: '#F5F3FF', border: '1px solid #DDD6FE' }}>
+                    <span style={{ fontSize: '11px', color: '#7C3AED', fontWeight: 700, textTransform: 'uppercase' }}>
+                      TOTAL BRICKS PRODUCED
+                    </span>
+                    <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#7C3AED' }}>
+                      {summary.totalProduced.toLocaleString('en-IN')} pcs
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>Across {entries.length} recorded shift entries</span>
+                  </div>
+
+                  <div style={{ padding: '10px 14px', borderRadius: '10px', background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                    <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700, textTransform: 'uppercase' }}>
+                      AVERAGE UNIT COST
+                    </span>
+                    <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#059669' }}>
+                      ₹{summary.averageCostPerBrick.toFixed(2)} / pc
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>Raw materials + Worker labor</span>
+                  </div>
+
+                  <div style={{ padding: '10px 14px', borderRadius: '10px', background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                    <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 700, textTransform: 'uppercase' }}>
+                      CEMENT CONSUMPTION
+                    </span>
+                    <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#D97706' }}>
+                      {entries.reduce((sum, e) => sum + e.cementBags, 0)} bags
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>Avg {(settings.cementRatio || 200)} bricks / bag</span>
+                  </div>
+                </div>
+
+                {/* Production Entries Table */}
+                <div className="hkb-table-wrapper" style={{ maxHeight: '380px' }}>
+                  <table className="hkb-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Produced (pcs)</th>
+                        <th>Cement (Bags)</th>
+                        <th>Stone Dust ({settings.unitDustLabel || 'Trucks'})</th>
+                        <th>Fly Ash ({settings.unitRaakhLabel || 'Tons'})</th>
+                        <th>Labor (₹/pc)</th>
+                        <th>Cost / Brick</th>
+                        <th>Shift Margin</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entries.slice().reverse().map(e => {
+                        const calc = calculateEntry(e, expenses, settings, summary.totalProduced);
+                        const costPerBrick = calc.costPerBrick;
+                        const profitPerBrick = calc.profitPerBrick;
+                        const isLoss = calc.isLoss;
+
+                        return (
+                          <tr key={e.id} className={isLoss ? 'row-loss' : undefined}>
+                            <td style={{ fontWeight: 600 }}>{e.date}</td>
+                            <td className="tabular-nums" style={{ fontWeight: 800, color: '#7C3AED' }}>
+                              {e.produced.toLocaleString('en-IN')}
+                            </td>
+                            <td className="tabular-nums">{e.cementBags}</td>
+                            <td className="tabular-nums">{e.dustTrucks.toFixed(1)}</td>
+                            <td className="tabular-nums">{e.raakhQty.toFixed(1)}</td>
+                            <td className="tabular-nums">₹{e.workerRate.toFixed(2)}</td>
+                            <td className="tabular-nums" style={{ fontWeight: 800, color: isLoss ? '#DC2626' : '#059669' }}>
+                              ₹{costPerBrick.toFixed(2)}
+                            </td>
+                            <td>
+                              {isLoss ? (
+                                <span className="badge badge-bad">-₹{Math.abs(profitPerBrick).toFixed(2)}</span>
+                              ) : (
+                                <span className="badge badge-good">+₹{profitPerBrick.toFixed(2)}</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {entries.length === 0 && (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: '#94A3B8' }}>
+                            No daily shift production logged yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #E2E8F0', paddingTop: '12px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setDashboardModal(null);
+                      onNavigateToLedger();
+                    }}
+                  >
+                    <span>Full Production Ledger</span>
+                    <ArrowUpRight size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      setDashboardModal(null);
+                      onNavigateToEntry();
+                    }}
+                  >
+                    <Plus size={13} />
+                    <span>Log Shift Output</span>
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* TAB 3: YARD INVENTORY & STOCK */}
+            {dashboardModal === 'stock' && (
+              <>
+                <div style={{ padding: '16px', background: '#F8FAFD', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                  <h4 style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    Live Inventory Reconciliation
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
+                    <div style={{ padding: '10px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                      <span style={{ fontSize: '11px', color: '#64748B' }}>Opening Yard Stock</span>
+                      <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>
+                        {settings.openingStock.toLocaleString('en-IN')} pcs
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                      <span style={{ fontSize: '11px', color: '#7C3AED' }}>+ Total Produced</span>
+                      <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#7C3AED' }}>
+                        +{summary.totalProduced.toLocaleString('en-IN')} pcs
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                      <span style={{ fontSize: '11px', color: '#D97706' }}>- Total Dispatched</span>
+                      <div className="tabular-nums" style={{ fontSize: '17px', fontWeight: 800, color: '#D97706' }}>
+                        -{displaySoldVolume.toLocaleString('en-IN')} pcs
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px', background: '#ECFDF5', borderRadius: '8px', border: '1.5px solid #A7F3D0' }}>
+                      <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>= Current Available Stock</span>
+                      <div className="tabular-nums" style={{ fontSize: '19px', fontWeight: 800, color: '#059669' }}>
+                        {summary.runningStock.toLocaleString('en-IN')} pcs
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hkb-table-wrapper" style={{ maxHeight: '340px' }}>
+                  <table className="hkb-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Manufactured (+)</th>
+                        <th>Dispatched (-)</th>
+                        <th>Shift Net Delta</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entries.slice().reverse().map(e => {
+                        const netDelta = e.produced - e.sold;
+                        return (
+                          <tr key={e.id}>
+                            <td style={{ fontWeight: 600 }}>{e.date}</td>
+                            <td className="tabular-nums" style={{ color: '#7C3AED', fontWeight: 700 }}>
+                              +{e.produced.toLocaleString('en-IN')} pcs
+                            </td>
+                            <td className="tabular-nums" style={{ color: '#D97706', fontWeight: 700 }}>
+                              -{e.sold.toLocaleString('en-IN')} pcs
+                            </td>
+                            <td className="tabular-nums" style={{ fontWeight: 800, color: netDelta >= 0 ? '#059669' : '#DC2626' }}>
+                              {netDelta >= 0 ? `+${netDelta.toLocaleString('en-IN')}` : netDelta.toLocaleString('en-IN')} pcs
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #E2E8F0', paddingTop: '12px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setDashboardModal(null);
+                      onNavigateToLedger();
+                    }}
+                  >
+                    <span>Full Ledger</span>
+                    <ArrowUpRight size={12} />
+                  </button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setDashboardModal(null)}>
+                    Done
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* TAB 4: VOLUME SOLD DISPATCHES */}
+            {dashboardModal === 'volume' && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: '10px' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#7C3AED', fontWeight: 700, textTransform: 'uppercase' }}>
+                      TOTAL BRICKS SOLD
+                    </span>
+                    <div className="tabular-nums" style={{ fontSize: '24px', fontWeight: 800, color: '#7C3AED' }}>
+                      {displaySoldVolume.toLocaleString('en-IN')} pcs
+                    </div>
+                  </div>
+                  <span className="badge badge-primary">
+                    {salesOrders.length > 0 ? `${salesOrders.length} Orders Fulfilled` : 'Direct Dispatches'}
+                  </span>
+                </div>
+
+                <div className="hkb-table-wrapper" style={{ maxHeight: '380px' }}>
+                  <table className="hkb-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Delivery Site</th>
+                        <th>Bricks Quantity</th>
+                        <th>Rate / Brick</th>
+                        <th>Total Bill</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {salesOrders.map(order => (
+                        <tr key={order.id}>
+                          <td style={{ fontWeight: 600 }}>{order.date}</td>
+                          <td style={{ fontWeight: 700, color: '#0F172A' }}>{order.customerName}</td>
+                          <td style={{ fontSize: '12px', color: '#64748B' }}>{order.siteLocation || 'Yard'}</td>
+                          <td className="tabular-nums" style={{ fontWeight: 800, color: '#7C3AED' }}>
+                            {order.quantity.toLocaleString('en-IN')} pcs
+                          </td>
+                          <td className="tabular-nums">₹{order.rate.toFixed(2)}</td>
+                          <td className="tabular-nums" style={{ fontWeight: 700 }}>
+                            ₹{order.totalAmount.toLocaleString('en-IN')}
+                          </td>
+                          <td>
+                            {order.paymentStatus === 'paid' && <span className="badge badge-good">PAID</span>}
+                            {order.paymentStatus === 'partial' && <span className="badge badge-warn">PARTIAL</span>}
+                            {order.paymentStatus === 'due' && <span className="badge badge-bad">DUE</span>}
+                          </td>
+                        </tr>
+                      ))}
+                      {salesOrders.length === 0 && (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#94A3B8' }}>
+                            No customer sales orders logged yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #E2E8F0', paddingTop: '12px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setDashboardModal(null);
+                      handleOpenSaleModal();
+                    }}
+                  >
+                    <Plus size={12} />
+                    <span>Record New Sale</span>
+                  </button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setDashboardModal(null)}>
+                    Done
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* TAB 5: NET PROFIT & OPERATIONAL COST BREAKDOWN */}
+            {dashboardModal === 'profit' && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px' }}>
+                  <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>GROSS REVENUE</span>
+                    <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A' }}>
+                      ₹{displayRevenue.toLocaleString('en-IN')}
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>Total billed brick sales</span>
+                  </div>
+
+                  <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                    <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 700 }}>MANUFACTURING COSTS</span>
+                    <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#D97706' }}>
+                      ₹{summary.totalProductionCost.toLocaleString('en-IN')}
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>Cement, dust, ash, worker labor</span>
+                  </div>
+
+                  <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#FEF2F2', border: '1px solid #FCA5A5' }}>
+                    <span style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700 }}>FIXED OVERHEADS</span>
+                    <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#DC2626' }}>
+                      ₹{summary.totalOverheadCost.toLocaleString('en-IN')}
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>Electricity, diesel, repairs, food</span>
+                  </div>
+
+                  <div style={{ padding: '12px 14px', borderRadius: '10px', background: summary.totalNetProfit >= 0 ? '#ECFDF5' : '#FEF2F2', border: summary.totalNetProfit >= 0 ? '1.5px solid #A7F3D0' : '1.5px solid #FCA5A5' }}>
+                    <span style={{ fontSize: '11px', color: summary.totalNetProfit >= 0 ? '#059669' : '#DC2626', fontWeight: 700 }}>NET OPERATING PROFIT</span>
+                    <div className="tabular-nums" style={{ fontSize: '22px', fontWeight: 800, color: summary.totalNetProfit >= 0 ? '#059669' : '#DC2626' }}>
+                      ₹{summary.totalNetProfit.toLocaleString('en-IN')}
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: summary.totalNetProfit >= 0 ? '#059669' : '#DC2626', fontWeight: 600 }}>
+                      {summary.totalNetProfit >= 0 ? 'Profitable Plant Operation' : 'Operating Loss'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Per-Brick Economics Banner */}
+                <div style={{ padding: '14px 18px', background: '#F5F3FF', borderRadius: '10px', border: '1px solid #DDD6FE', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h4 style={{ fontSize: '13.5px', fontWeight: 800, color: '#7C3AED' }}>Unit Economics per Fly Ash Brick</h4>
+                    <p style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                      Selling price: <strong>₹{(settings.defaultSalePrice || 4.0).toFixed(2)}</strong> vs. Avg manufacturing cost: <strong>₹{summary.averageCostPerBrick.toFixed(2)}</strong>
+                    </p>
+                  </div>
+                  <div className="tabular-nums" style={{ fontSize: '18px', fontWeight: 800, color: ((settings.defaultSalePrice || 4.0) - summary.averageCostPerBrick) >= 0 ? '#059669' : '#DC2626' }}>
+                    {((settings.defaultSalePrice || 4.0) - summary.averageCostPerBrick) >= 0 ? '+' : ''}₹{((settings.defaultSalePrice || 4.0) - summary.averageCostPerBrick).toFixed(2)} / brick margin
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #E2E8F0', paddingTop: '12px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setDashboardModal(null);
+                      onNavigateToLedger();
+                    }}
+                  >
+                    <span>View Cost Ledger</span>
+                    <ArrowUpRight size={12} />
+                  </button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setDashboardModal(null)}>
+                    Done
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
