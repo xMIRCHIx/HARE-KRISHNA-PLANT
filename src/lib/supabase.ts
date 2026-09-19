@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
+import { ProductionEntry, Expense, Settings, SalesOrder, CustomerPayment } from '../types';
 
-export const SUPABASE_URL = 'https://uwfcngioytanhdtdsqyv.supabase.co';
+export const SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string) || 'https://uwfcngioytanhdtdsqyv.supabase.co';
 export const SUPABASE_ANON_KEY =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3ZmNuZ2lveXRhbmhkdGRzcXl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMjQzOTAsImV4cCI6MjEwMjcwMDM5MH0.0uJgkeLt4bpuDibLQMlk8S4s-ya2AHSndkEKcPSBitQ';
-
-export const SUPABASE_SERVICE_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3ZmNuZ2lveXRhbmhkdGRzcXl2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzEyNDM5MCwiZXhwIjoyMTAyNzAwMzkwfQ.5kgs2hZh1BDSTSXtl3NxQrDq76lR9N2gmUHBDhZPsKs';
 
 // Client initialized with project credentials
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -167,7 +167,6 @@ export async function testSupabaseConnection(): Promise<boolean> {
   try {
     const { error } = await supabase.from('production_entries').select('id').limit(1);
     if (error) {
-      // If table doesn't exist yet, we catch it smoothly
       console.warn('Supabase table query notice:', error.message);
       return false;
     }
@@ -175,5 +174,257 @@ export async function testSupabaseConnection(): Promise<boolean> {
   } catch (err) {
     console.warn('Supabase offline or unreachable:', err);
     return false;
+  }
+}
+
+// ==========================================
+// REAL-TIME TWO-WAY CLOUD SYNC METHODS
+// ==========================================
+
+export async function syncEntryToCloud(entry: ProductionEntry): Promise<boolean> {
+  try {
+    const row = {
+      id: entry.id,
+      date: entry.date,
+      produced: entry.produced,
+      sold: entry.sold,
+      sale_price: entry.salePrice,
+      cost_mode: entry.costMode,
+      cement_bags: entry.cementBags,
+      cement_rate: entry.cementRate,
+      dust_trucks: entry.dustTrucks,
+      dust_rate: entry.dustRate,
+      raakh_qty: entry.raakhQty,
+      raakh_rate: entry.raakhRate,
+      manual_material_cost: entry.manualMaterialCost || null,
+      worker_rate: entry.workerRate,
+      other_cost: entry.otherCost,
+      note: entry.note || null,
+      estimated_target: entry.estimatedTarget || null,
+      variance_note: entry.varianceNote || null,
+      run_lines: entry.runLines || []
+    };
+    const { error } = await supabase.from('production_entries').upsert(row);
+    if (error) {
+      console.warn('Supabase syncEntry error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Supabase syncEntry network exception:', err);
+    return false;
+  }
+}
+
+export async function deleteEntryFromCloud(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('production_entries').delete().eq('id', id);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function syncExpenseToCloud(expense: Expense): Promise<boolean> {
+  try {
+    const row = {
+      id: expense.id,
+      date: expense.date,
+      category: expense.category,
+      amount: expense.amount,
+      frequency: expense.frequency,
+      note: expense.note || null
+    };
+    const { error } = await supabase.from('expenses').upsert(row);
+    if (error) {
+      console.warn('Supabase syncExpense error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Supabase syncExpense network exception:', err);
+    return false;
+  }
+}
+
+export async function deleteExpenseFromCloud(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function syncSalesOrderToCloud(order: SalesOrder): Promise<boolean> {
+  try {
+    const row = {
+      id: order.id,
+      date: order.date,
+      customer_name: order.customerName,
+      customer_phone: order.customerPhone || null,
+      site_location: order.siteLocation || null,
+      quantity: order.quantity,
+      rate: order.rate,
+      total_amount: order.totalAmount,
+      paid_amount: order.paidAmount,
+      balance_due: order.balanceDue,
+      payment_status: order.paymentStatus,
+      note: order.note || null
+    };
+    const { error } = await supabase.from('sales_orders').upsert(row);
+    if (error) {
+      console.warn('Supabase syncSalesOrder notice (ensure sales_orders table is created in Supabase SQL editor):', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Supabase syncSalesOrder network exception:', err);
+    return false;
+  }
+}
+
+export async function deleteSalesOrderFromCloud(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('sales_orders').delete().eq('id', id);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function syncPaymentToCloud(payment: CustomerPayment): Promise<boolean> {
+  try {
+    const row = {
+      id: payment.id,
+      order_id: payment.orderId,
+      date: payment.date,
+      customer_name: payment.customerName,
+      amount: payment.amount,
+      payment_mode: payment.paymentMode,
+      note: payment.note || null
+    };
+    const { error } = await supabase.from('customer_payments').upsert(row);
+    if (error) {
+      console.warn('Supabase syncPayment notice:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Supabase syncPayment network exception:', err);
+    return false;
+  }
+}
+
+export async function syncSettingsToCloud(settings: Settings): Promise<boolean> {
+  try {
+    const row = {
+      id: 'default',
+      default_sale_price: settings.defaultSalePrice,
+      default_worker_rate: settings.defaultWorkerRate,
+      target_cost_per_brick: 3.50,
+      opening_stock: settings.openingStock,
+      production_estimate_mode: settings.productionEstimateMode,
+      cement_yield_ratio: settings.cementRatio,
+      unit_raakh_label: settings.unitRaakhLabel,
+      overhead_split_mode: settings.overheadSplitMode,
+      allow_udhaar_credit: settings.allowUdhaarCredit
+    };
+    const { error } = await supabase.from('plant_settings').upsert(row);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchAllFromCloud(): Promise<{
+  entries?: ProductionEntry[];
+  expenses?: Expense[];
+  salesOrders?: SalesOrder[];
+  customerPayments?: CustomerPayment[];
+} | null> {
+  try {
+    const [entriesRes, expensesRes, salesRes, paymentsRes] = await Promise.allSettled([
+      supabase.from('production_entries').select('*').order('date', { ascending: true }),
+      supabase.from('expenses').select('*').order('date', { ascending: true }),
+      supabase.from('sales_orders').select('*').order('date', { ascending: false }),
+      supabase.from('customer_payments').select('*').order('date', { ascending: false })
+    ]);
+
+    const result: {
+      entries?: ProductionEntry[];
+      expenses?: Expense[];
+      salesOrders?: SalesOrder[];
+      customerPayments?: CustomerPayment[];
+    } = {};
+
+    if (entriesRes.status === 'fulfilled' && !entriesRes.value.error && entriesRes.value.data && entriesRes.value.data.length > 0) {
+      result.entries = entriesRes.value.data.map((r: any) => ({
+        id: r.id,
+        date: r.date,
+        produced: Number(r.produced) || 0,
+        sold: Number(r.sold) || 0,
+        salePrice: Number(r.sale_price) || 4.00,
+        costMode: r.cost_mode || 'ratio',
+        cementBags: Number(r.cement_bags) || 0,
+        cementRate: Number(r.cement_rate) || 0,
+        dustTrucks: Number(r.dust_trucks) || 0,
+        dustRate: Number(r.dust_rate) || 0,
+        raakhQty: Number(r.raakh_qty) || 0,
+        raakhRate: Number(r.raakh_rate) || 0,
+        manualMaterialCost: r.manual_material_cost ? Number(r.manual_material_cost) : undefined,
+        workerRate: Number(r.worker_rate) || 0.60,
+        otherCost: Number(r.other_cost) || 0,
+        note: r.note || undefined,
+        estimatedTarget: r.estimated_target ? Number(r.estimated_target) : undefined,
+        varianceNote: r.variance_note || undefined,
+        runLines: r.run_lines || []
+      }));
+    }
+
+    if (expensesRes.status === 'fulfilled' && !expensesRes.value.error && expensesRes.value.data && expensesRes.value.data.length > 0) {
+      result.expenses = expensesRes.value.data.map((r: any) => ({
+        id: r.id,
+        date: r.date,
+        category: r.category,
+        amount: Number(r.amount) || 0,
+        frequency: r.frequency || 'daily',
+        note: r.note || undefined
+      }));
+    }
+
+    if (salesRes.status === 'fulfilled' && !salesRes.value.error && salesRes.value.data && salesRes.value.data.length > 0) {
+      result.salesOrders = salesRes.value.data.map((r: any) => ({
+        id: r.id,
+        date: r.date,
+        customerName: r.customer_name,
+        customerPhone: r.customer_phone || undefined,
+        siteLocation: r.site_location || undefined,
+        quantity: Number(r.quantity) || 0,
+        rate: Number(r.rate) || 4.00,
+        totalAmount: Number(r.total_amount) || 0,
+        paidAmount: Number(r.paid_amount) || 0,
+        balanceDue: Number(r.balance_due) || 0,
+        paymentStatus: r.payment_status || 'due',
+        note: r.note || undefined
+      }));
+    }
+
+    if (paymentsRes.status === 'fulfilled' && !paymentsRes.value.error && paymentsRes.value.data && paymentsRes.value.data.length > 0) {
+      result.customerPayments = paymentsRes.value.data.map((r: any) => ({
+        id: r.id,
+        orderId: r.order_id,
+        date: r.date,
+        customerName: r.customer_name,
+        amount: Number(r.amount) || 0,
+        paymentMode: r.payment_mode || 'cash',
+        note: r.note || undefined
+      }));
+    }
+
+    return result;
+  } catch (err) {
+    console.warn('Error fetching all cloud data:', err);
+    return null;
   }
 }

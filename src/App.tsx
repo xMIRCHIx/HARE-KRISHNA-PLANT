@@ -30,7 +30,18 @@ import {
   getAuthSession,
   setAuthSession
 } from './lib/storage';
-import { testSupabaseConnection } from './lib/supabase';
+import {
+  testSupabaseConnection,
+  syncEntryToCloud,
+  deleteEntryFromCloud,
+  syncExpenseToCloud,
+  deleteExpenseFromCloud,
+  syncSalesOrderToCloud,
+  deleteSalesOrderFromCloud,
+  syncPaymentToCloud,
+  syncSettingsToCloud,
+  fetchAllFromCloud
+} from './lib/supabase';
 import { SalesView } from './components/SalesView';
 
 export const App: React.FC = () => {
@@ -56,10 +67,31 @@ export const App: React.FC = () => {
     setIsAuthenticated(getAuthSession());
   }, []);
 
-  // Test Supabase connection
+  // Test Supabase connection and pull initial cloud data if available
   useEffect(() => {
-    testSupabaseConnection().then(ok => {
+    testSupabaseConnection().then(async ok => {
       setSyncStatus(ok ? 'connected' : 'offline_cached');
+      if (ok) {
+        const cloudData = await fetchAllFromCloud();
+        if (cloudData) {
+          if (cloudData.entries && cloudData.entries.length > 0) {
+            setEntries(cloudData.entries);
+            saveStoredEntries(cloudData.entries);
+          }
+          if (cloudData.expenses && cloudData.expenses.length > 0) {
+            setExpenses(cloudData.expenses);
+            saveStoredExpenses(cloudData.expenses);
+          }
+          if (cloudData.salesOrders && cloudData.salesOrders.length > 0) {
+            setSalesOrders(cloudData.salesOrders);
+            saveStoredSalesOrders(cloudData.salesOrders);
+          }
+          if (cloudData.customerPayments && cloudData.customerPayments.length > 0) {
+            setCustomerPayments(cloudData.customerPayments);
+            saveStoredCustomerPayments(cloudData.customerPayments);
+          }
+        }
+      }
     });
   }, []);
 
@@ -89,6 +121,7 @@ export const App: React.FC = () => {
     }
     setEntries(updated);
     saveStoredEntries(updated);
+    syncEntryToCloud(entry);
     setActiveTab('ledger');
   };
 
@@ -96,58 +129,71 @@ export const App: React.FC = () => {
     const updated = entries.filter(e => e.id !== id);
     setEntries(updated);
     saveStoredEntries(updated);
+    deleteEntryFromCloud(id);
   };
 
   const handleAddExpense = (expense: Expense) => {
     const updated = [...expenses, expense];
     setExpenses(updated);
     saveStoredExpenses(updated);
+    syncExpenseToCloud(expense);
   };
 
   const handleDeleteExpense = (id: string) => {
     const updated = expenses.filter(e => e.id !== id);
     setExpenses(updated);
     saveStoredExpenses(updated);
+    deleteExpenseFromCloud(id);
   };
 
   const handleAddSalesOrder = (order: SalesOrder) => {
     const updated = [order, ...salesOrders];
     setSalesOrders(updated);
     saveStoredSalesOrders(updated);
+    syncSalesOrderToCloud(order);
   };
 
   const handleDeleteSalesOrder = (id: string) => {
     const updated = salesOrders.filter(o => o.id !== id);
     setSalesOrders(updated);
     saveStoredSalesOrders(updated);
+    deleteSalesOrderFromCloud(id);
   };
 
   const handleRecordPayment = (payment: CustomerPayment) => {
     const updatedPayments = [payment, ...customerPayments];
     setCustomerPayments(updatedPayments);
     saveStoredCustomerPayments(updatedPayments);
+    syncPaymentToCloud(payment);
 
+    let updatedTargetOrder: SalesOrder | null = null;
     const updatedOrders = salesOrders.map(order => {
       if (order.id === payment.orderId) {
         const newPaid = order.paidAmount + payment.amount;
         const newDue = Math.max(order.totalAmount - newPaid, 0);
-        return {
+        const updated = {
           ...order,
           paidAmount: newPaid,
           balanceDue: newDue,
           paymentStatus: newDue <= 0 ? ('paid' as const) : ('partial' as const)
         };
+        updatedTargetOrder = updated;
+        return updated;
       }
       return order;
     });
 
     setSalesOrders(updatedOrders);
     saveStoredSalesOrders(updatedOrders);
+    if (updatedTargetOrder) {
+      syncSalesOrderToCloud(updatedTargetOrder);
+    }
   };
 
   const handleSaveSettings = (newSettings: Settings) => {
     setSettings(newSettings);
     saveStoredSettings(newSettings);
+    syncSettingsToCloud(newSettings);
   };
 
   const handleDataReload = () => {
