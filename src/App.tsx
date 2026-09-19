@@ -70,42 +70,71 @@ export const App: React.FC = () => {
     setIsAuthenticated(getAuthSession());
   }, []);
 
-  // Test Supabase connection and pull initial cloud data if available
+  // Test Supabase connection and pull authoritative cloud data
   useEffect(() => {
-    testSupabaseConnection().then(async ok => {
+    let isMounted = true;
+
+    async function initializeCloudSync() {
+      const ok = await testSupabaseConnection();
+      if (!isMounted) return;
       setSyncStatus(ok ? 'connected' : 'offline_cached');
+
       if (ok) {
-        const cloudData = await fetchAllFromCloud();
-        if (cloudData) {
-          if (cloudData.entries && cloudData.entries.length > 0) {
-            setEntries(cloudData.entries);
-            saveStoredEntries(cloudData.entries);
+        try {
+          // 1. Fetch initial cloud data
+          const cloudData = await fetchAllFromCloud();
+          if (!isMounted) return;
+
+          // 2. Identify and push any local records that never synced to cloud
+          const localOrders = getStoredSalesOrders();
+          const localPayments = getStoredCustomerPayments();
+          const cloudOrderIds = new Set(cloudData?.salesOrders?.map(o => o.id) || []);
+          const cloudPaymentIds = new Set(cloudData?.customerPayments?.map(p => p.id) || []);
+
+          const unsyncedOrders = localOrders.filter(o => !cloudOrderIds.has(o.id));
+          for (const o of unsyncedOrders) {
+            await syncSalesOrderToCloud(o);
           }
-          if (cloudData.expenses && cloudData.expenses.length > 0) {
-            setExpenses(cloudData.expenses);
-            saveStoredExpenses(cloudData.expenses);
+
+          const unsyncedPayments = localPayments.filter(p => !cloudPaymentIds.has(p.id));
+          for (const p of unsyncedPayments) {
+            await syncPaymentToCloud(p);
           }
-          if (cloudData.salesOrders && cloudData.salesOrders.length > 0) {
-            setSalesOrders(prev => {
-              const cloudIds = new Set(cloudData.salesOrders!.map(o => o.id));
-              const localOnly = prev.filter(o => !cloudIds.has(o.id));
-              const merged = [...cloudData.salesOrders!, ...localOnly];
-              saveStoredSalesOrders(merged);
-              return merged;
-            });
+
+          // 3. Load authoritative dataset straight from Supabase
+          const freshCloud = (unsyncedOrders.length > 0 || unsyncedPayments.length > 0)
+            ? await fetchAllFromCloud()
+            : cloudData;
+
+          if (!isMounted || !freshCloud) return;
+
+          if (freshCloud.entries) {
+            setEntries(freshCloud.entries);
+            saveStoredEntries(freshCloud.entries);
           }
-          if (cloudData.customerPayments && cloudData.customerPayments.length > 0) {
-            setCustomerPayments(prev => {
-              const cloudIds = new Set(cloudData.customerPayments!.map(p => p.id));
-              const localOnly = prev.filter(p => !cloudIds.has(p.id));
-              const merged = [...cloudData.customerPayments!, ...localOnly];
-              saveStoredCustomerPayments(merged);
-              return merged;
-            });
+          if (freshCloud.expenses) {
+            setExpenses(freshCloud.expenses);
+            saveStoredExpenses(freshCloud.expenses);
           }
+          if (freshCloud.salesOrders) {
+            setSalesOrders(freshCloud.salesOrders);
+            saveStoredSalesOrders(freshCloud.salesOrders);
+          }
+          if (freshCloud.customerPayments) {
+            setCustomerPayments(freshCloud.customerPayments);
+            saveStoredCustomerPayments(freshCloud.customerPayments);
+          }
+        } catch (err) {
+          console.warn('Supabase initialization sync exception:', err);
         }
       }
-    });
+    }
+
+    initializeCloudSync();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleLanguageChange = (lang: Language) => {
@@ -123,7 +152,7 @@ export const App: React.FC = () => {
     setIsAuthenticated(false);
   };
 
-  const handleSaveEntry = (entry: ProductionEntry) => {
+  const handleSaveEntry = async (entry: ProductionEntry) => {
     const existingIndex = entries.findIndex(e => e.date === entry.date);
     let updated: ProductionEntry[];
     if (existingIndex >= 0) {
@@ -134,38 +163,46 @@ export const App: React.FC = () => {
     }
     setEntries(updated);
     saveStoredEntries(updated);
-    syncEntryToCloud(entry);
+    await syncEntryToCloud(entry);
     setActiveTab('ledger');
   };
 
-  const handleDeleteEntry = (id: string) => {
+  const handleDeleteEntry = async (id: string) => {
     const updated = entries.filter(e => e.id !== id);
     setEntries(updated);
     saveStoredEntries(updated);
-    deleteEntryFromCloud(id);
+    await deleteEntryFromCloud(id);
   };
 
-  const handleAddExpense = (expense: Expense) => {
+  const handleAddExpense = async (expense: Expense) => {
     const updated = [...expenses, expense];
     setExpenses(updated);
     saveStoredExpenses(updated);
-    syncExpenseToCloud(expense);
+    await syncExpenseToCloud(expense);
   };
 
-  const handleDeleteExpense = (id: string) => {
+  const handleDeleteExpense = async (id: string) => {
     const updated = expenses.filter(e => e.id !== id);
     setExpenses(updated);
     saveStoredExpenses(updated);
-    deleteExpenseFromCloud(id);
+    await deleteExpenseFromCloud(id);
   };
 
-  const handleAddSalesOrder = (order: SalesOrder, initialPayment?: CustomerPayment) => {
+  const handleAddSalesOrder = async (order: SalesOrder, initialPayment?: CustomerPayment) => {
+    // 1. Immediately persist order to Supabase
+    await syncSalesOrderToCloud(order);
+
+    // 2. If initial payment provided, persist payment to Supabase
+    if (initialPayment) {
+      await syncPaymentToCloud(initialPayment);
+    }
+
+    // 3. Update React state & offline cache
     setSalesOrders(prev => {
       const updated = [order, ...prev.filter(o => o.id !== order.id)];
       saveStoredSalesOrders(updated);
       return updated;
     });
-    syncSalesOrderToCloud(order);
 
     if (initialPayment) {
       setCustomerPayments(prev => {
@@ -173,65 +210,74 @@ export const App: React.FC = () => {
         saveStoredCustomerPayments(updated);
         return updated;
       });
-      syncPaymentToCloud(initialPayment);
     }
   };
 
-  const handleDeleteSalesOrder = (id: string) => {
+  const handleDeleteSalesOrder = async (id: string) => {
     setSalesOrders(prev => {
       const updated = prev.filter(o => o.id !== id);
       saveStoredSalesOrders(updated);
       return updated;
     });
-    deleteSalesOrderFromCloud(id);
+    await deleteSalesOrderFromCloud(id);
   };
 
-  const handleRecordPayment = (payment: CustomerPayment) => {
+  const handleRecordPayment = async (payment: CustomerPayment) => {
+    // 1. Save payment in Supabase
+    await syncPaymentToCloud(payment);
+
+    // 2. Update order balance and status in Supabase
+    let updatedTargetOrder: SalesOrder | null = null;
+    const updatedOrders = salesOrders.map(order => {
+      if (order.id === payment.orderId) {
+        const newPaid = order.paidAmount + payment.amount;
+        const newDue = Math.max(order.totalAmount - newPaid, 0);
+        const updated = {
+          ...order,
+          paidAmount: newPaid,
+          balanceDue: newDue,
+          paymentStatus: (newDue <= 0 ? 'paid' : 'partial') as PaymentStatus
+        };
+        updatedTargetOrder = updated;
+        return updated;
+      }
+      return order;
+    });
+
+    if (updatedTargetOrder) {
+      await syncSalesOrderToCloud(updatedTargetOrder);
+    }
+
+    // 3. Update React state and offline cache
     setCustomerPayments(prev => {
       const updated = [payment, ...prev.filter(p => p.id !== payment.id)];
       saveStoredCustomerPayments(updated);
       return updated;
     });
-    syncPaymentToCloud(payment);
-
-    setSalesOrders(prev => {
-      let updatedTargetOrder: SalesOrder | null = null;
-      const updatedOrders = prev.map(order => {
-        if (order.id === payment.orderId) {
-          const newPaid = order.paidAmount + payment.amount;
-          const newDue = Math.max(order.totalAmount - newPaid, 0);
-          const updated = {
-            ...order,
-            paidAmount: newPaid,
-            balanceDue: newDue,
-            paymentStatus: (newDue <= 0 ? 'paid' : 'partial') as PaymentStatus
-          };
-          updatedTargetOrder = updated;
-          return updated;
-        }
-        return order;
-      });
-
-      saveStoredSalesOrders(updatedOrders);
-      if (updatedTargetOrder) {
-        syncSalesOrderToCloud(updatedTargetOrder);
-      }
-      return updatedOrders;
-    });
+    setSalesOrders(updatedOrders);
+    saveStoredSalesOrders(updatedOrders);
   };
 
-  const handleSaveSettings = (newSettings: Settings) => {
+  const handleSaveSettings = async (newSettings: Settings) => {
     setSettings(newSettings);
     saveStoredSettings(newSettings);
-    syncSettingsToCloud(newSettings);
+    await syncSettingsToCloud(newSettings);
   };
 
-  const handleDataReload = () => {
+  const handleDataReload = async () => {
     setSettings(getStoredSettings());
-    setEntries(getStoredEntries());
-    setExpenses(getStoredExpenses());
-    setSalesOrders(getStoredSalesOrders());
-    setCustomerPayments(getStoredCustomerPayments());
+    const cloud = await fetchAllFromCloud();
+    if (cloud) {
+      if (cloud.entries) setEntries(cloud.entries);
+      if (cloud.expenses) setExpenses(cloud.expenses);
+      if (cloud.salesOrders) setSalesOrders(cloud.salesOrders);
+      if (cloud.customerPayments) setCustomerPayments(cloud.customerPayments);
+    } else {
+      setEntries(getStoredEntries());
+      setExpenses(getStoredExpenses());
+      setSalesOrders(getStoredSalesOrders());
+      setCustomerPayments(getStoredCustomerPayments());
+    }
   };
 
   if (!isAuthenticated) {

@@ -158,6 +158,9 @@ CREATE TABLE IF NOT EXISTS public.customer_payments (
 ALTER TABLE public.sales_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customer_payments ENABLE ROW LEVEL SECURITY;
 
+-- Migration helper if table already existed without payment_mode
+ALTER TABLE public.sales_orders ADD COLUMN IF NOT EXISTS payment_mode TEXT DEFAULT NULL;
+
 CREATE POLICY "Allow all on sales_orders" ON public.sales_orders FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on customer_payments" ON public.customer_payments FOR ALL USING (true) WITH CHECK (true);
 `;
@@ -260,7 +263,7 @@ export async function deleteExpenseFromCloud(id: string): Promise<boolean> {
 
 export async function syncSalesOrderToCloud(order: SalesOrder): Promise<boolean> {
   try {
-    const row = {
+    const baseRow = {
       id: order.id,
       date: order.date,
       customer_name: order.customerName,
@@ -272,10 +275,23 @@ export async function syncSalesOrderToCloud(order: SalesOrder): Promise<boolean>
       paid_amount: order.paidAmount,
       balance_due: order.balanceDue,
       payment_status: order.paymentStatus,
-      payment_mode: order.paymentMode || null,
       note: order.note || null
     };
-    const { error } = await supabase.from('sales_orders').upsert(row);
+
+    // If order has a paymentMode, try sending it first; if PGRST204 occurs (column absent), cleanly fallback to baseRow
+    if (order.paymentMode) {
+      const rowWithMode = { ...baseRow, payment_mode: order.paymentMode };
+      const { error: modeErr } = await supabase.from('sales_orders').upsert(rowWithMode);
+      if (!modeErr) {
+        return true;
+      }
+      // If error is other than missing column, log warning
+      if (modeErr.code !== 'PGRST204') {
+        console.warn('Supabase syncSalesOrder notice:', modeErr.message);
+      }
+    }
+
+    const { error } = await supabase.from('sales_orders').upsert(baseRow);
     if (error) {
       console.warn('Supabase syncSalesOrder notice (ensure sales_orders table is created in Supabase SQL editor):', error.message);
       return false;
@@ -424,6 +440,18 @@ export async function fetchAllFromCloud(): Promise<{
         paymentMode: r.payment_mode || 'cash',
         note: r.note || undefined
       }));
+    }
+
+    // Attach paymentMode from customerPayments if not present on sales_orders
+    if (result.salesOrders && result.customerPayments) {
+      for (const order of result.salesOrders) {
+        if (!order.paymentMode) {
+          const matchingPayment = result.customerPayments.find(p => p.orderId === order.id);
+          if (matchingPayment) {
+            order.paymentMode = matchingPayment.paymentMode;
+          }
+        }
+      }
     }
 
     return result;
