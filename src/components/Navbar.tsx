@@ -66,18 +66,25 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div
             style={{
-              width: '38px',
-              height: '38px',
+              width: '40px',
+              height: '40px',
               borderRadius: '8px',
-              background: 'linear-gradient(135deg, #2F6FED 0%, #1E5AD6 100%)',
-              color: '#FFFFFF',
+              background: '#FFFFFF',
+              border: '1px solid var(--line)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(47, 111, 237, 0.25)'
+              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.05)',
+              flexShrink: 0,
+              overflow: 'hidden',
+              padding: '2px'
             }}
           >
-            <span style={{ fontWeight: 700, fontSize: '18px', letterSpacing: '-0.5px' }}>HK</span>
+            <img
+              src="/logo.png"
+              alt="Hare Krishna Bricks"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

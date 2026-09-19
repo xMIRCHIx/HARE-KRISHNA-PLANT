@@ -9,7 +9,6 @@ import {
   LogOut,
   Database,
   CheckCircle2,
-  Boxes,
   Languages,
   X,
   IndianRupee
@@ -87,22 +86,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div style={{ padding: '22px 18px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* Hexabox 3D Violet Emblem */}
+              {/* Official Company Logo Emblem */}
               <div
                 style={{
-                  width: '38px',
-                  height: '38px',
+                  width: '42px',
+                  height: '42px',
                   borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)',
-                  color: '#FFFFFF',
+                  background: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 6px 16px rgba(124, 58, 237, 0.32)',
-                  flexShrink: 0
+                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                  padding: '3px'
                 }}
               >
-                <Boxes size={20} color="#FFFFFF" />
+                <img
+                  src="/logo.png"
+                  alt="Hare Krishna Bricks"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
               </div>
 
               <div style={{ minWidth: 0 }}>

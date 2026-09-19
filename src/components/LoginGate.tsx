@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Boxes,
   ArrowRight,
   ShieldCheck,
   AlertCircle,
@@ -115,19 +114,25 @@ export const LoginGate: React.FC<LoginGateProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>
               <div
                 style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '12px',
-                  background: 'rgba(255, 255, 255, 0.16)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '14px',
+                  background: '#FFFFFF',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.2)'
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                  padding: '4px'
                 }}
               >
-                <Boxes size={24} color="#FFFFFF" />
+                <img
+                  src="/logo.png"
+                  alt="Hare Krishna Bricks Logo"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
               </div>
               <div>
                 <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', margin: 0 }}>

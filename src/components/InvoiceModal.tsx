@@ -10,8 +10,7 @@ import {
   Banknote,
   FileText,
   Copy,
-  Check,
-  Boxes
+  Check
 } from 'lucide-react';
 import { SalesOrder, CustomerPayment, Settings, PaymentMode } from '../types';
 
@@ -282,18 +281,25 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                 <div
                   style={{
-                    width: '38px',
-                    height: '38px',
+                    width: '56px',
+                    height: '56px',
                     borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)',
-                    color: '#FFFFFF',
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 3px 10px rgba(124, 58, 237, 0.3)'
+                    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.05)',
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                    padding: '3px'
                   }}
                 >
-                  <Boxes size={22} />
+                  <img
+                    src="/logo.png"
+                    alt="Hare Krishna Bricks"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
                 </div>
                 <div>
                   <h1

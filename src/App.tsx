@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Boxes, Search, Calendar, Bell, Sparkles } from 'lucide-react';
+import { Menu, Search, Calendar, Bell, Sparkles } from 'lucide-react';
 import { Sidebar, ActiveTab } from './components/Sidebar';
 import { LoginGate } from './components/LoginGate';
 import { DashboardView } from './components/DashboardView';
@@ -247,17 +247,20 @@ export const App: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div
               style={{
-                width: '28px',
-                height: '28px',
+                width: '32px',
+                height: '32px',
                 borderRadius: '7px',
-                background: 'linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)',
-                color: '#FFFFFF',
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                overflow: 'hidden',
+                padding: '2px',
+                flexShrink: 0
               }}
             >
-              <Boxes size={16} color="#FFFFFF" />
+              <img src="/logo.png" alt="HK" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <span style={{ fontWeight: 800, fontSize: '14.5px', color: '#0F172A', letterSpacing: '-0.02em' }}>
               HK Bricks
