@@ -130,9 +130,9 @@ export const translations: Record<Language, Translations> = {
       rowCement: '1. Cement',
       rowCementFormula: '(Bags Used × Day Rate) ÷ Total Bricks Produced',
       rowDust: '2. Stone Dust',
-      rowDustFormula: '(Trucks Used × Truck Rate) ÷ Total Bricks Produced',
+      rowDustFormula: '(Tons Used × Ton Rate) ÷ Total Bricks Produced',
       rowRaakh: '3. Fly Ash / Raakh',
-      rowRaakhFormula: '(Qty Used × Delivered Rate) ÷ Total Bricks Produced',
+      rowRaakhFormula: '(Tons Used × Ton Rate) ÷ Total Bricks Produced',
       rowWorker: '4. Worker Labor Payoff',
       rowWorkerFormula: 'Fixed Piece-Rate Payoff per Brick',
       rowTotalCost: 'Total Manufacturing Cost',
@@ -145,7 +145,7 @@ export const translations: Record<Language, Translations> = {
       step1Title: 'STEP 1: OPEN DAILY ENTRY',
       step1Desc: 'At the end of the day, navigate to the Daily Entry tab. Enter the total brick count produced (single count or per shift/batch).',
       step2Title: 'STEP 2: ENTER MATERIALS USED',
-      step2Desc: 'Input actual cement bags, dust trucks, and fly ash tons used today. The right panel instantly displays live cost-per-brick and margin.',
+      step2Desc: 'Input actual cement bags, dust tons, and fly ash tons used today. The right panel instantly displays live cost-per-brick and margin.',
       step3Title: 'STEP 3: LOG SALES & SAVE',
       step3Desc: 'Enter dispatches/sales count and sale rate. Click "Save Entry" — stock, worker wages, and ledger are updated simultaneously.'
     }

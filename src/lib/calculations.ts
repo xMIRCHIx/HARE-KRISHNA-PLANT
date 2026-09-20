@@ -110,7 +110,7 @@ export function estimateMorningTarget(
       const targetFromCement = Math.round(cementBags * avgCementRatio);
       return {
         targetFromCement,
-        targetFromDust: Math.round(dustTrucks * (settings.dustRatio || 10000)),
+        targetFromDust: Math.round(dustTrucks * (settings.dustRatio || 600)),
         targetFromRaakh: Math.round(raakhQty * (settings.raakhRatio || 2500)),
         recommendedTarget: targetFromCement,
         method: 'auto',
@@ -121,7 +121,7 @@ export function estimateMorningTarget(
 
   // Fixed ratio mode
   const cementRatio = settings.cementRatio || 120; // standard bricks per 50kg bag
-  const dustRatio = settings.dustRatio || 10000;
+  const dustRatio = settings.dustRatio || 600; // ~600 bricks per ton of stone dust
   const raakhRatio = settings.raakhRatio || 2500;
 
   const targetFromCement = Math.round(cementBags * cementRatio);

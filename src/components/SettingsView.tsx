@@ -193,10 +193,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Dust Truck</label>
+                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Dust Ton</label>
                 <input
                   type="number"
-                  min="100"
+                  min="10"
                   className="form-input tabular-nums"
                   value={formData.dustRatio}
                   onChange={e => handleChange('dustRatio', Number(e.target.value))}
@@ -204,10 +204,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Raakh Unit</label>
+                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Fly Ash Ton</label>
                 <input
                   type="number"
-                  min="100"
+                  min="10"
                   className="form-input tabular-nums"
                   value={formData.raakhRatio}
                   onChange={e => handleChange('raakhRatio', Number(e.target.value))}
@@ -217,17 +217,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             {/* Standard Mixer Batch Prediction Configuration */}
             <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>
                   Standard Mixer Batch Recipe (दैनिक प्रोडक्शन प्रेडिक्शन)
                 </h4>
-                <span className={`badge ${formData.isRatioConfirmed ? 'badge-good' : 'badge-warn'}`}>
-                  {formData.isRatioConfirmed ? '✓ Ratio Confirmed' : '⚠ Default / Unconfirmed'}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: formData.isRatioConfirmed ? '#166534' : '#64748B' }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.isRatioConfirmed ?? false}
+                      onChange={e => handleChange('isRatioConfirmed', e.target.checked)}
+                      style={{ accentColor: '#10B981', cursor: 'pointer' }}
+                    />
+                    <span>Mark Recipe Confirmed</span>
+                  </label>
+                  <span className={`badge ${formData.isRatioConfirmed ? 'badge-good' : 'badge-warn'}`}>
+                    {formData.isRatioConfirmed ? '✓ Ratio Confirmed' : '⚠ Default / Unconfirmed'}
+                  </span>
+                </div>
               </div>
               <p style={{ fontSize: '12px', color: 'var(--ink-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
                 Used to predict daily production when entering cement bags.
-                <em> Note: Dust and fly ash quantities are shown for recipe reference but do not affect the prediction calculation.</em>
+                <em> Note: Dust and fly ash quantities are measured in Tons (weighbridge standard) for recipe reference but do not affect the cement-based prediction calculation.</em>
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
@@ -266,32 +277,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: '13px' }}>
-                    Batch Dust (Reference only)
+                    Batch Dust (Tons - Ref only)
                   </label>
                   <input
                     type="number"
-                    step="0.001"
+                    step="0.01"
                     min="0"
                     className="form-input tabular-nums"
-                    value={formData.batchDustQty ?? 0.01}
+                    value={formData.batchDustQty ?? 0.18}
                     onChange={e => handleChange('batchDustQty', Number(e.target.value))}
                   />
-                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Dust qty / mixer batch</span>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. 0.18 Ton (~180 kg dust)</span>
                 </div>
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: '13px' }}>
-                    Batch Fly Ash (Reference only)
+                    Batch Fly Ash (Tons - Ref only)
                   </label>
                   <input
                     type="number"
-                    step="0.001"
+                    step="0.01"
                     min="0"
                     className="form-input tabular-nums"
-                    value={formData.batchFlyAshQty ?? 0.04}
+                    value={formData.batchFlyAshQty ?? 0.05}
                     onChange={e => handleChange('batchFlyAshQty', Number(e.target.value))}
                   />
-                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Fly ash qty / mixer batch</span>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. 0.05 Ton (~50 kg raakh)</span>
                 </div>
               </div>
             </div>

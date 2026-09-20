@@ -12,8 +12,8 @@ const STORAGE_KEYS = {
 export const DEFAULT_SETTINGS: Settings = {
   productionEstimateMode: 'fixed',
   cementRatio: 120, // 120 bricks per 50kg bag standard yield
-  dustRatio: 10000, // 10,000 bricks per 900 CFT truck
-  raakhRatio: 2500, // 2,500 bricks per ton
+  dustRatio: 600, // ~600 bricks per ton of stone dust
+  raakhRatio: 2500, // 2,500 bricks per ton of fly ash
   defaultWorkerRate: 0.60, // ₹0.60 per brick payoff
   defaultSalePrice: 4.00, // ₹4.00 benchmark selling price
   overheadSplitMode: 'separate',
@@ -21,11 +21,11 @@ export const DEFAULT_SETTINGS: Settings = {
   openingStock: 0, // Fresh yard balance to be configured by owner
   openingStockDate: new Date().toISOString().split('T')[0],
   unitRaakhLabel: 'Tons',
-  unitDustLabel: 'Trucks (800-900 CFT)',
+  unitDustLabel: 'Tons',
   allowUdhaarCredit: true,
   batchCementBags: 1,
-  batchDustQty: 0.01,
-  batchFlyAshQty: 0.04,
+  batchDustQty: 0.18, // ~180 kg (0.18 Ton) dust per 120 bricks batch
+  batchFlyAshQty: 0.05, // ~50 kg (0.05 Ton) fly ash per 120 bricks batch
   bricksPerBatch: 120,
   isRatioConfirmed: false
 };
@@ -43,7 +43,15 @@ export function getStoredSettings(): Settings {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
       return DEFAULT_SETTINGS;
     }
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    // Auto-migrate legacy truck label to Tons
+    if (parsed.unitDustLabel && (parsed.unitDustLabel.includes('Truck') || parsed.unitDustLabel.includes('CFT'))) {
+      parsed.unitDustLabel = 'Tons';
+      if (parsed.dustRatio === 10000) parsed.dustRatio = 600;
+      if (parsed.batchDustQty === 0.01) parsed.batchDustQty = 0.18;
+      if (parsed.batchFlyAshQty === 0.04) parsed.batchFlyAshQty = 0.05;
+    }
+    return { ...DEFAULT_SETTINGS, ...parsed };
   } catch {
     return DEFAULT_SETTINGS;
   }

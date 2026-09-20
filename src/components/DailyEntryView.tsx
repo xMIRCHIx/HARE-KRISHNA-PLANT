@@ -53,10 +53,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
   // Materials string states (allows clean backspacing with no stuck 0)
   const [cementBagsStr, setCementBagsStr] = useState('70');
   const [cementRateStr, setCementRateStr] = useState('380');
-  const [dustTrucksStr, setDustTrucksStr] = useState('0.85');
-  const [dustRateStr, setDustRateStr] = useState('8500');
-  const [raakhQtyStr, setRaakhQtyStr] = useState('3.4');
-  const [raakhRateStr, setRaakhRateStr] = useState('450');
+  const [dustTrucksStr, setDustTrucksStr] = useState('12.5'); // 12.5 Tons
+  const [dustRateStr, setDustRateStr] = useState('650'); // ₹650 / Ton
+  const [raakhQtyStr, setRaakhQtyStr] = useState('3.5'); // 3.5 Tons
+  const [raakhRateStr, setRaakhRateStr] = useState('450'); // ₹450 / Ton
   const [manualMaterialCostStr, setManualMaterialCostStr] = useState('35000');
   const [workerRateStr, setWorkerRateStr] = useState(String(settings.defaultWorkerRate || 0.60));
   const [otherCostStr, setOtherCostStr] = useState('400');
@@ -535,10 +535,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                 {/* Stone Dust Row */}
                 <div className="material-row-grid">
                   <div className="form-group">
-                    <label className="form-label">Stone Dust ({settings.unitDustLabel})</label>
+                    <label className="form-label">Stone Dust ({settings.unitDustLabel || 'Tons'})</label>
                     <input
                       type="number"
-                      step="0.05"
+                      step="0.1"
                       min="0"
                       placeholder="0"
                       className="form-input tabular-nums"
@@ -547,7 +547,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Rate (₹ / Truck)</label>
+                    <label className="form-label">Rate (₹ / {settings.unitDustLabel || 'Ton'})</label>
                     <input
                       type="number"
                       min="0"
@@ -568,7 +568,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                 {/* Fly Ash / Raakh Row */}
                 <div className="material-row-grid">
                   <div className="form-group">
-                    <label className="form-label">Fly Ash / Raakh ({settings.unitRaakhLabel})</label>
+                    <label className="form-label">Fly Ash / Raakh ({settings.unitRaakhLabel || 'Tons'})</label>
                     <input
                       type="number"
                       step="0.1"
@@ -580,7 +580,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Rate (₹ / {settings.unitRaakhLabel})</label>
+                    <label className="form-label">Rate (₹ / {settings.unitRaakhLabel || 'Ton'})</label>
                     <input
                       type="number"
                       min="0"
