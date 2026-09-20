@@ -29,7 +29,8 @@ import {
   getStoredCustomerPayments,
   saveStoredCustomerPayments,
   getAuthSession,
-  setAuthSession
+  setAuthSession,
+  clearAllStoredOperationalData
 } from './lib/storage';
 import {
   testSupabaseConnection,
@@ -41,7 +42,8 @@ import {
   deleteSalesOrderFromCloud,
   syncPaymentToCloud,
   syncSettingsToCloud,
-  fetchAllFromCloud
+  fetchAllFromCloud,
+  clearAllCloudData
 } from './lib/supabase';
 import { SalesView } from './components/SalesView';
 import { InvoicesView } from './components/InvoicesView';
@@ -82,10 +84,25 @@ export const App: React.FC = () => {
           if (!isMounted) return;
 
           // 2. Identify and push any local records that never synced to cloud
+          const localEntries = getStoredEntries();
+          const localExpenses = getStoredExpenses();
           const localOrders = getStoredSalesOrders();
           const localPayments = getStoredCustomerPayments();
+
+          const cloudEntryIds = new Set(cloudData?.entries?.map(e => e.id) || []);
+          const cloudExpenseIds = new Set(cloudData?.expenses?.map(x => x.id) || []);
           const cloudOrderIds = new Set(cloudData?.salesOrders?.map(o => o.id) || []);
           const cloudPaymentIds = new Set(cloudData?.customerPayments?.map(p => p.id) || []);
+
+          const unsyncedEntries = localEntries.filter(e => !cloudEntryIds.has(e.id));
+          for (const e of unsyncedEntries) {
+            await syncEntryToCloud(e);
+          }
+
+          const unsyncedExpenses = localExpenses.filter(x => !cloudExpenseIds.has(x.id));
+          for (const x of unsyncedExpenses) {
+            await syncExpenseToCloud(x);
+          }
 
           const unsyncedOrders = localOrders.filter(o => !cloudOrderIds.has(o.id));
           for (const o of unsyncedOrders) {
@@ -98,25 +115,24 @@ export const App: React.FC = () => {
           }
 
           // 3. Load authoritative dataset straight from Supabase
-          const freshCloud = (unsyncedOrders.length > 0 || unsyncedPayments.length > 0)
-            ? await fetchAllFromCloud()
-            : cloudData;
+          const hadUnsynced = unsyncedEntries.length > 0 || unsyncedExpenses.length > 0 || unsyncedOrders.length > 0 || unsyncedPayments.length > 0;
+          const freshCloud = hadUnsynced ? await fetchAllFromCloud() : cloudData;
 
           if (!isMounted || !freshCloud) return;
 
-          if (freshCloud.entries) {
+          if (freshCloud.entries !== undefined) {
             setEntries(freshCloud.entries);
             saveStoredEntries(freshCloud.entries);
           }
-          if (freshCloud.expenses) {
+          if (freshCloud.expenses !== undefined) {
             setExpenses(freshCloud.expenses);
             saveStoredExpenses(freshCloud.expenses);
           }
-          if (freshCloud.salesOrders) {
+          if (freshCloud.salesOrders !== undefined) {
             setSalesOrders(freshCloud.salesOrders);
             saveStoredSalesOrders(freshCloud.salesOrders);
           }
-          if (freshCloud.customerPayments) {
+          if (freshCloud.customerPayments !== undefined) {
             setCustomerPayments(freshCloud.customerPayments);
             saveStoredCustomerPayments(freshCloud.customerPayments);
           }
@@ -258,6 +274,15 @@ export const App: React.FC = () => {
     setSettings(newSettings);
     saveStoredSettings(newSettings);
     await syncSettingsToCloud(newSettings);
+  };
+
+  const handleClearDatabase = async () => {
+    await clearAllCloudData();
+    clearAllStoredOperationalData();
+    setEntries([]);
+    setExpenses([]);
+    setSalesOrders([]);
+    setCustomerPayments([]);
   };
 
   const handleDataReload = async () => {
@@ -479,6 +504,7 @@ export const App: React.FC = () => {
               settings={settings}
               onSaveSettings={handleSaveSettings}
               onDataReload={handleDataReload}
+              onClearDatabase={handleClearDatabase}
             />
           )}
         </div>

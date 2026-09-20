@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Boxes,
   TrendingUp,
@@ -21,7 +21,8 @@ import {
   Smartphone,
   Landmark,
   FileText,
-  IndianRupee
+  IndianRupee,
+  Calendar
 } from 'lucide-react';
 import {
   ProductionEntry,
@@ -64,7 +65,106 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToSales,
   onNavigateToInvoices
 }) => {
-  const summary: PlantSummary = calculatePlantSummary(entries, expenses, settings);
+  // Time period filter: 'month' (default), 'today', 'week', 'all', 'custom'
+  const [timeFilter, setTimeFilter] = useState<'month' | 'today' | 'week' | 'all' | 'custom'>('month');
+  const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
+
+  // Current month string 'YYYY-MM' and human-readable label
+  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  const currentMonthLabel = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+  // Filter datasets based on selected time period
+  const filteredSalesOrders = useMemo(() => {
+    if (timeFilter === 'all') return salesOrders;
+    if (timeFilter === 'today') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return salesOrders.filter(o => o.date === todayStr);
+    }
+    if (timeFilter === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekStr = weekAgo.toISOString().split('T')[0];
+      return salesOrders.filter(o => o.date >= weekStr);
+    }
+    if (timeFilter === 'month') {
+      return salesOrders.filter(o => o.date.startsWith(currentMonthStr));
+    }
+    if (timeFilter === 'custom' && customDate) {
+      return salesOrders.filter(o => o.date === customDate);
+    }
+    return salesOrders;
+  }, [salesOrders, timeFilter, customDate, currentMonthStr]);
+
+  const filteredEntries = useMemo(() => {
+    if (timeFilter === 'all') return entries;
+    if (timeFilter === 'today') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return entries.filter(e => e.date === todayStr);
+    }
+    if (timeFilter === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekStr = weekAgo.toISOString().split('T')[0];
+      return entries.filter(e => e.date >= weekStr);
+    }
+    if (timeFilter === 'month') {
+      return entries.filter(e => e.date.startsWith(currentMonthStr));
+    }
+    if (timeFilter === 'custom' && customDate) {
+      return entries.filter(e => e.date === customDate);
+    }
+    return entries;
+  }, [entries, timeFilter, customDate, currentMonthStr]);
+
+  const filteredExpenses = useMemo(() => {
+    if (timeFilter === 'all') return expenses;
+    if (timeFilter === 'today') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return expenses.filter(x => x.date === todayStr);
+    }
+    if (timeFilter === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekStr = weekAgo.toISOString().split('T')[0];
+      return expenses.filter(x => x.date >= weekStr);
+    }
+    if (timeFilter === 'month') {
+      return expenses.filter(x => x.date.startsWith(currentMonthStr));
+    }
+    if (timeFilter === 'custom' && customDate) {
+      return expenses.filter(x => x.date === customDate);
+    }
+    return expenses;
+  }, [expenses, timeFilter, customDate, currentMonthStr]);
+
+  const filteredPayments = useMemo(() => {
+    if (timeFilter === 'all') return customerPayments;
+    if (timeFilter === 'today') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return customerPayments.filter(p => p.date === todayStr);
+    }
+    if (timeFilter === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekStr = weekAgo.toISOString().split('T')[0];
+      return customerPayments.filter(p => p.date >= weekStr);
+    }
+    if (timeFilter === 'month') {
+      return customerPayments.filter(p => p.date.startsWith(currentMonthStr));
+    }
+    if (timeFilter === 'custom' && customDate) {
+      return customerPayments.filter(p => p.date === customDate);
+    }
+    return customerPayments;
+  }, [customerPayments, timeFilter, customDate, currentMonthStr]);
+
+  // Overall plant summary calculated from filtered datasets and authoritative sales orders
+  const summary: PlantSummary = calculatePlantSummary(
+    filteredEntries,
+    filteredExpenses,
+    settings,
+    filteredSalesOrders
+  );
   const latestEntry = entries[entries.length - 1];
   const latestCalc = summary.todayCalc;
 
@@ -84,17 +184,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [dashModalSearch, setDashModalSearch] = useState('');
   const [dashModeFilter, setDashModeFilter] = useState<PaymentMode | 'all'>('all');
 
-  // Sales & receivables calculations
-  const totalOutstandingDues = salesOrders.reduce((sum, o) => sum + o.balanceDue, 0);
-  const totalBricksSoldInOrders = salesOrders.reduce((sum, o) => sum + o.quantity, 0);
-  const totalSalesRevenueFromOrders = salesOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  // Sales & receivables calculations for the selected period
+  const totalOutstandingDues = filteredSalesOrders.reduce((sum, o) => sum + o.balanceDue, 0);
+  const totalBricksSoldInOrders = filteredSalesOrders.reduce((sum, o) => sum + o.quantity, 0);
+  const totalSalesRevenueFromOrders = filteredSalesOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
   const displaySoldVolume = totalBricksSoldInOrders > 0 ? totalBricksSoldInOrders : summary.totalSold;
   const displayRevenue = totalSalesRevenueFromOrders > 0 ? totalSalesRevenueFromOrders : summary.totalRevenue;
 
-  // Mode-wise collection breakdown & all receipts list
+  // Mode-wise collection breakdown & all receipts list for the selected period
   const paymentsByOrder = new Map<string, CustomerPayment[]>();
-  customerPayments.forEach(p => {
+  filteredPayments.forEach(p => {
     const list = paymentsByOrder.get(p.orderId) || [];
     list.push(p);
     paymentsByOrder.set(p.orderId, list);
@@ -110,8 +210,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     note?: string;
   }[] = [];
 
-  // 1. Recorded customerPayments
-  customerPayments.forEach(p => {
+  // 1. Recorded customerPayments in period
+  filteredPayments.forEach(p => {
     allReceiptsList.push({
       id: p.id,
       orderId: p.orderId,
@@ -123,8 +223,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
   });
 
-  // 2. Initial advance payments on sales orders not yet captured in customerPayments
-  salesOrders.forEach(o => {
+  // 2. Initial advance payments on sales orders in period not yet captured in customerPayments
+  filteredSalesOrders.forEach(o => {
     if (o.paidAmount > 0) {
       const existing = paymentsByOrder.get(o.id);
       const totalInPayments = existing ? existing.reduce((sum, p) => sum + p.amount, 0) : 0;
@@ -145,7 +245,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   allReceiptsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const totalReceiptsInflow = allReceiptsList.reduce((sum, r) => sum + r.amount, 0);
-  const totalCashCollected = Math.max(totalReceiptsInflow, salesOrders.reduce((sum, o) => sum + o.paidAmount, 0));
+  const totalCashCollected = Math.max(totalReceiptsInflow, filteredSalesOrders.reduce((sum, o) => sum + o.paidAmount, 0));
 
   const modeTotals = {
     cash: allReceiptsList.filter(r => r.paymentMode === 'cash').reduce((sum, r) => sum + r.amount, 0),
@@ -515,6 +615,153 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
       )}
+
+      {/* DASHBOARD PERIOD & CALENDAR FILTER BAR */}
+      <div
+        className="hkb-card"
+        style={{
+          padding: '12px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          background: '#FFFFFF',
+          border: '1.5px solid #E2E8F0',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              background: '#F5F3FF',
+              color: '#7C3AED',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            <Calendar size={18} />
+          </div>
+          <div>
+            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Dashboard Overview Period
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>
+                {timeFilter === 'month'
+                  ? `Monthly View: ${currentMonthLabel}`
+                  : timeFilter === 'today'
+                  ? `Today's Shift & Sales (${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })})`
+                  : timeFilter === 'week'
+                  ? 'Last 7 Days Rolling Window'
+                  : timeFilter === 'custom'
+                  ? `Custom Date: ${new Date(customDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                  : 'All-Time Historical Operations'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setTimeFilter('month')}
+            style={{
+              padding: '6px 13px',
+              fontSize: '12px',
+              fontWeight: 700,
+              background: timeFilter === 'month' ? '#7C3AED' : '#F8FAFC',
+              color: timeFilter === 'month' ? '#FFFFFF' : '#475569',
+              borderColor: timeFilter === 'month' ? '#7C3AED' : '#E2E8F0',
+              borderRadius: '8px'
+            }}
+          >
+            This Month ({new Date().toLocaleDateString('en-IN', { month: 'short' })})
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setTimeFilter('today')}
+            style={{
+              padding: '6px 13px',
+              fontSize: '12px',
+              fontWeight: 700,
+              background: timeFilter === 'today' ? '#7C3AED' : '#F8FAFC',
+              color: timeFilter === 'today' ? '#FFFFFF' : '#475569',
+              borderColor: timeFilter === 'today' ? '#7C3AED' : '#E2E8F0',
+              borderRadius: '8px'
+            }}
+          >
+            Today
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setTimeFilter('week')}
+            style={{
+              padding: '6px 13px',
+              fontSize: '12px',
+              fontWeight: 700,
+              background: timeFilter === 'week' ? '#7C3AED' : '#F8FAFC',
+              color: timeFilter === 'week' ? '#FFFFFF' : '#475569',
+              borderColor: timeFilter === 'week' ? '#7C3AED' : '#E2E8F0',
+              borderRadius: '8px'
+            }}
+          >
+            7 Days
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setTimeFilter('all')}
+            style={{
+              padding: '6px 13px',
+              fontSize: '12px',
+              fontWeight: 700,
+              background: timeFilter === 'all' ? '#7C3AED' : '#F8FAFC',
+              color: timeFilter === 'all' ? '#FFFFFF' : '#475569',
+              borderColor: timeFilter === 'all' ? '#7C3AED' : '#E2E8F0',
+              borderRadius: '8px'
+            }}
+          >
+            All Time
+          </button>
+
+          {/* Date Picker Input for custom day selection */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
+            <input
+              type="date"
+              value={customDate}
+              onChange={e => {
+                setCustomDate(e.target.value);
+                setTimeFilter('custom');
+              }}
+              style={{
+                height: '32px',
+                padding: '4px 8px',
+                fontSize: '12px',
+                borderRadius: '8px',
+                border: timeFilter === 'custom' ? '1.5px solid #7C3AED' : '1px solid #CBD5E1',
+                background: timeFilter === 'custom' ? '#F5F3FF' : '#FFFFFF',
+                color: '#0F172A',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+              title="Pick any specific day from calendar"
+            />
+          </div>
+        </div>
+      </div>
 
       {/* Hexabox 3-Column Command Hub: Hero Revenue, 7-Day Velocity Bar Chart, and Operations Health */}
       <div className="hexabox-top-command-grid">
@@ -1040,15 +1287,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 4 Operations KPI Cards Row */}
       <div className="dashboard-kpi-grid">
-        {/* Card 1: Today's Output */}
+        {/* Card 1: Output */}
         <KPICard
-          title="Today's Production"
-          value={latestEntry ? latestEntry.produced : 0}
+          title={timeFilter === 'today' ? "Today's Production" : timeFilter === 'month' ? "Month's Production" : timeFilter === 'week' ? "7-Day Production" : timeFilter === 'custom' ? "Selected Day Production" : "Total Production"}
+          value={timeFilter === 'today' ? (latestEntry ? latestEntry.produced : 0) : summary.totalProduced}
           suffix=" pcs"
           theme="purple"
-          subtitle={latestEntry ? `Logged on ${latestEntry.date}` : 'Awaiting today\'s shift log'}
+          subtitle={timeFilter === 'today' ? (latestEntry ? `Logged on ${latestEntry.date}` : 'Awaiting today\'s shift log') : `${filteredEntries.length} shifts recorded in period`}
           badge={{
-            text: latestEntry && latestEntry.produced >= (latestEntry.estimatedTarget || 8000) ? 'Target Met' : 'Normal Shift',
+            text: (timeFilter === 'today' ? (latestEntry?.produced || 0) : summary.totalProduced) > 0 ? 'Active Output' : 'No Shifts',
             type: 'primary'
           }}
           icon={<Boxes size={18} />}
@@ -1064,7 +1311,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           value={summary.runningStock}
           suffix=" pcs"
           theme="green"
-          subtitle={`Opening stock: ${settings.openingStock.toLocaleString('en-IN')} pcs`}
+          subtitle={`Opening: ${settings.openingStock.toLocaleString('en-IN')} | Sold: ${summary.totalSold.toLocaleString('en-IN')}`}
           badge={{
             text: summary.runningStock > 10000 ? 'Healthy Stock' : 'Low Stock',
             type: summary.runningStock > 10000 ? 'good' : 'warn'
@@ -1078,11 +1325,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Card 3: Total Bricks Sold */}
         <KPICard
-          title="Total Bricks Sold"
+          title={timeFilter === 'today' ? "Today's Bricks Sold" : timeFilter === 'month' ? "Month's Bricks Sold" : timeFilter === 'week' ? "7-Day Bricks Sold" : timeFilter === 'custom' ? "Selected Day Bricks Sold" : "Total Bricks Sold"}
           value={displaySoldVolume}
           suffix=" pcs"
           theme="purple"
-          subtitle={`${salesOrders.length > 0 ? `${salesOrders.length} customer orders fulfilled` : 'Direct yard dispatches'}`}
+          subtitle={`${filteredSalesOrders.length > 0 ? `${filteredSalesOrders.length} customer orders fulfilled` : 'Direct yard dispatches'}`}
           badge={{
             text: 'Volume Sold',
             type: 'primary'
@@ -1096,13 +1343,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Card 4: Net Plant Profit */}
         <KPICard
-          title="Net Plant Profit"
+          title={timeFilter === 'today' ? "Today's Net Profit" : timeFilter === 'month' ? "Monthly Net Profit" : timeFilter === 'week' ? "7-Day Net Profit" : timeFilter === 'custom' ? "Selected Day Net Profit" : "Net Plant Profit"}
           value={summary.totalNetProfit}
           prefix="₹"
           decimals={0}
           theme={summary.totalNetProfit >= 0 ? 'green' : 'rose'}
           isLoss={summary.totalNetProfit < 0}
-          subtitle={settings.overheadSplitMode === 'split' ? 'Overheads amortized' : 'Overheads tracked separately'}
+          subtitle={`COGS on ${displaySoldVolume.toLocaleString('en-IN')} sold bricks`}
           badge={{
             text: summary.totalNetProfit >= 0 ? 'Profitable' : 'Loss Warning',
             type: summary.totalNetProfit >= 0 ? 'good' : 'bad'
@@ -2351,25 +2598,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* TAB 5: NET PROFIT & OPERATIONAL COST BREAKDOWN */}
             {dashboardModal === 'profit' && (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
                   <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                    <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>GROSS REVENUE</span>
+                    <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>GROSS SALES REVENUE</span>
                     <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A' }}>
                       ₹{displayRevenue.toLocaleString('en-IN')}
                     </div>
-                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>Total billed brick sales</span>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>From {displaySoldVolume.toLocaleString('en-IN')} sold bricks</span>
                   </div>
 
                   <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-                    <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 700 }}>MANUFACTURING COSTS</span>
+                    <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 700 }}>COST OF GOODS SOLD (COGS)</span>
                     <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#D97706' }}>
-                      ₹{summary.totalProductionCost.toLocaleString('en-IN')}
+                      ₹{summary.totalCostOfSold.toLocaleString('en-IN')}
                     </div>
-                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>Cement, dust, ash, worker labor</span>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>@ ₹{summary.averageCostPerBrick.toFixed(2)}/brick cost</span>
+                  </div>
+
+                  <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                    <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700 }}>GROSS SALES MARGIN</span>
+                    <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#16A34A' }}>
+                      ₹{summary.grossProfit.toLocaleString('en-IN')}
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: '#64748B' }}>Revenue minus COGS</span>
                   </div>
 
                   <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#FEF2F2', border: '1px solid #FCA5A5' }}>
-                    <span style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700 }}>FIXED OVERHEADS</span>
+                    <span style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700 }}>PLANT OVERHEADS</span>
                     <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 800, color: '#DC2626' }}>
                       ₹{summary.totalOverheadCost.toLocaleString('en-IN')}
                     </div>
@@ -2382,7 +2637,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ₹{summary.totalNetProfit.toLocaleString('en-IN')}
                     </div>
                     <span style={{ fontSize: '10.5px', color: summary.totalNetProfit >= 0 ? '#059669' : '#DC2626', fontWeight: 600 }}>
-                      {summary.totalNetProfit >= 0 ? 'Profitable Plant Operation' : 'Operating Loss'}
+                      {summary.totalNetProfit >= 0 ? 'Profitable Plant Operation' : 'Operating Loss Warning'}
                     </span>
                   </div>
                 </div>
@@ -2392,11 +2647,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div>
                     <h4 style={{ fontSize: '13.5px', fontWeight: 800, color: '#7C3AED' }}>Unit Economics per Fly Ash Brick</h4>
                     <p style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                      Selling price: <strong>₹{(settings.defaultSalePrice || 4.0).toFixed(2)}</strong> vs. Avg manufacturing cost: <strong>₹{summary.averageCostPerBrick.toFixed(2)}</strong>
+                      Avg selling rate: <strong>₹{displaySoldVolume > 0 ? (displayRevenue / displaySoldVolume).toFixed(2) : (settings.defaultSalePrice || 4.0).toFixed(2)}</strong> vs. Avg manufacturing cost: <strong>₹{summary.averageCostPerBrick.toFixed(2)}</strong>
                     </p>
                   </div>
-                  <div className="tabular-nums" style={{ fontSize: '18px', fontWeight: 800, color: ((settings.defaultSalePrice || 4.0) - summary.averageCostPerBrick) >= 0 ? '#059669' : '#DC2626' }}>
-                    {((settings.defaultSalePrice || 4.0) - summary.averageCostPerBrick) >= 0 ? '+' : ''}₹{((settings.defaultSalePrice || 4.0) - summary.averageCostPerBrick).toFixed(2)} / brick margin
+                  <div className="tabular-nums" style={{ fontSize: '18px', fontWeight: 800, color: ((displaySoldVolume > 0 ? (displayRevenue / displaySoldVolume) : (settings.defaultSalePrice || 4.0)) - summary.averageCostPerBrick) >= 0 ? '#059669' : '#DC2626' }}>
+                    {((displaySoldVolume > 0 ? (displayRevenue / displaySoldVolume) : (settings.defaultSalePrice || 4.0)) - summary.averageCostPerBrick) >= 0 ? '+' : ''}₹{((displaySoldVolume > 0 ? (displayRevenue / displaySoldVolume) : (settings.defaultSalePrice || 4.0)) - summary.averageCostPerBrick).toFixed(2)} / brick margin
                   </div>
                 </div>
 

@@ -3,7 +3,8 @@ import {
   Expense,
   Settings,
   CalculationResult,
-  PlantSummary
+  PlantSummary,
+  SalesOrder
 } from '../types';
 
 /**
@@ -141,46 +142,75 @@ export function estimateMorningTarget(
 
 /**
  * Rolls up all historical entries and expenses into the overall Plant Summary KPIs.
+ * Accurately calculates Realized Profit based on ACTUAL bricks sold (COGS method).
  */
 export function calculatePlantSummary(
   entries: ProductionEntry[],
   expenses: Expense[],
-  settings: Settings
+  settings: Settings,
+  salesOrders: SalesOrder[] = []
 ): PlantSummary {
   const sortedEntries = [...entries].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
   const totalPeriodProduced = sortedEntries.reduce((sum, e) => sum + (e.produced || 0), 0);
-  const totalSold = sortedEntries.reduce((sum, e) => sum + (e.sold || 0), 0);
-  const totalRevenue = sortedEntries.reduce((sum, e) => {
+
+  // Authoritative Sales & Revenue rollup:
+  // If dedicated customer sales orders exist, use them; otherwise fallback to daily entry sold
+  const hasOrders = salesOrders && salesOrders.length > 0;
+  const totalOrdersSold = hasOrders ? salesOrders.reduce((sum, o) => sum + (o.quantity || 0), 0) : 0;
+  const totalOrdersRevenue = hasOrders ? salesOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0) : 0;
+
+  const entriesSold = sortedEntries.reduce((sum, e) => sum + (e.sold || 0), 0);
+  const entriesRevenue = sortedEntries.reduce((sum, e) => {
     const price = e.salePrice || settings.defaultSalePrice || 4.0;
     return sum + (e.sold || 0) * price;
   }, 0);
 
+  const totalSold = hasOrders ? totalOrdersSold : entriesSold;
+  const totalRevenue = hasOrders ? totalOrdersRevenue : entriesRevenue;
+
   const totalOverheadCost = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
   let totalProductionCost = 0;
-  let totalNetProfit = 0;
   let lossDayCount = 0;
 
   sortedEntries.forEach(entry => {
     const calc = calculateEntry(entry, expenses, settings, totalPeriodProduced);
     totalProductionCost += calc.totalCost;
-    totalNetProfit += calc.profit;
     if (calc.isLoss) {
       lossDayCount++;
     }
   });
 
-  // If overhead is separate mode, deduct overhead from plant net profit rollup
+  // Calculate manufacturing cost per brick:
+  // 1. If production entries exist with output, use actual average production cost
+  // 2. Otherwise (before entries logged), compute standard recipe benchmark cost
+  const cementCostPerBrick = 380 / (settings.cementRatio || 120);
+  const dustCostPerBrick = (settings.dustRatio && settings.dustRatio > 0) ? (4500 / settings.dustRatio) : 0.88;
+  const raakhCostPerBrick = (settings.raakhRatio && settings.raakhRatio > 0) ? (600 / settings.raakhRatio) : 0.45;
+  const laborCostPerBrick = settings.defaultWorkerRate || 0.60;
+  const baselineCostPerBrick = cementCostPerBrick + dustCostPerBrick + raakhCostPerBrick + laborCostPerBrick;
+
+  const averageCostPerBrick = totalPeriodProduced > 0
+    ? totalProductionCost / totalPeriodProduced
+    : baselineCostPerBrick;
+
+  // Realized Cost of Goods Sold (COGS) on ACTUAL bricks sold
+  const totalCostOfSold = totalSold * averageCostPerBrick;
+
+  // Gross Realized Profit on sold bricks
+  const grossProfit = totalRevenue - totalCostOfSold;
+
+  // Net Plant Operating Profit = Gross Profit - Overhead Expenses
+  let totalNetProfit = grossProfit;
   if (settings.overheadSplitMode === 'separate') {
     totalNetProfit -= totalOverheadCost;
   }
 
+  // Running stock: Opening stock + Total produced - Total sold
   const runningStock = (settings.openingStock || 0) + (totalPeriodProduced - totalSold);
-  const averageCostPerBrick =
-    totalPeriodProduced > 0 ? totalProductionCost / totalPeriodProduced : 0;
 
   // Today's entry
   const todayStr = new Date().toISOString().split('T')[0];
@@ -194,6 +224,8 @@ export function calculatePlantSummary(
     totalRevenue,
     totalProductionCost,
     totalOverheadCost,
+    totalCostOfSold,
+    grossProfit,
     totalNetProfit,
     averageCostPerBrick,
     lossDayCount,

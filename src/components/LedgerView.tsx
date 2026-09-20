@@ -157,10 +157,36 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
             </tr>
           </thead>
           <tbody>
-            {filteredEntries.length === 0 ? (
+            {entries.length === 0 ? (
+              <tr>
+                <td colSpan={11} style={{ textAlign: 'center', padding: '48px 24px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)' }}>
+                      <FileSpreadsheet size={24} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ink)' }}>
+                        No Manufacturing Shifts Logged Yet (कोई प्रोडक्शन एंट्री नहीं मिली)
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--ink-muted)', marginTop: '4px', maxWidth: '460px', lineHeight: 1.5 }}>
+                        Shift manufacturing output, cement/dust consumption, worker labor, and per-brick production costs will appear here date-wise once you record your first shift.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={onNavigateToEntry}
+                      style={{ marginTop: '10px' }}
+                    >
+                      + Log First Shift Output (नई प्रोडक्शन एंट्री दर्ज करें)
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ) : filteredEntries.length === 0 ? (
               <tr>
                 <td colSpan={11} style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-faint)' }}>
-                  No entries match your search.
+                  No entries match "{searchTerm}". Try clearing your search.
                 </td>
               </tr>
             ) : (

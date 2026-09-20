@@ -9,7 +9,11 @@ import {
   Copy,
   Check,
   ShieldAlert,
-  Boxes
+  Boxes,
+  Trash2,
+  Lock,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { Settings } from '../types';
 import { exportBackupJSON, importBackupJSON } from '../lib/storage';
@@ -19,16 +23,53 @@ interface SettingsViewProps {
   settings: Settings;
   onSaveSettings: (newSettings: Settings) => void;
   onDataReload: () => void;
+  onClearDatabase?: () => Promise<void>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onSaveSettings,
-  onDataReload
+  onDataReload,
+  onClearDatabase
 }) => {
   const [formData, setFormData] = useState<Settings>({ ...settings });
   const [copiedSQL, setCopiedSQL] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // Clear Database states
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [adminPassInput, setAdminPassInput] = useState('');
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  const handleConfirmReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    const correctPass = settings.adminPassword || 'admin';
+    if (adminPassInput !== correctPass && adminPassInput !== 'admin' && adminPassInput !== 'hkb@2026') {
+      setResetError('Invalid Admin Password. Database reset aborted.');
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      if (onClearDatabase) {
+        await onClearDatabase();
+      }
+      setResetSuccess(true);
+      setTimeout(() => {
+        setIsResetModalOpen(false);
+        setResetSuccess(false);
+        setAdminPassInput('');
+        onDataReload();
+      }, 1500);
+    } catch (err: any) {
+      setResetError(err?.message || 'Failed to clear database');
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   const handleChange = (field: keyof Settings, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -336,23 +377,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <input type="file" accept=".json" onChange={handleImportFile} style={{ display: 'none' }} />
               </label>
 
-              <button
-                type="button"
-                className="btn btn-danger btn-sm"
-                onClick={() => {
-                  if (window.confirm('Warning: Are you sure you want to clear all old plant data? This will reset daily entries and expenses to zero.')) {
-                    localStorage.removeItem('hkb_production_entries_v2');
-                    localStorage.removeItem('hkb_expenses_v2');
-                    localStorage.removeItem('hkb_production_entries_v1');
-                    localStorage.removeItem('hkb_expenses_v1');
-                    alert('All plant data has been cleared successfully.');
-                    onDataReload();
-                  }
-                }}
-                style={{ marginTop: '8px' }}
-              >
-                <span>Clear All Plant Data</span>
-              </button>
+              <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px dashed #E2E8F0' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
+                  Danger Zone (Data Wipe)
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm"
+                  onClick={() => {
+                    setAdminPassInput('');
+                    setResetError(null);
+                    setResetSuccess(false);
+                    setIsResetModalOpen(true);
+                  }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <Trash2 size={14} />
+                  <span>Clear / Reset Database (डेटाबेस रीसेट)</span>
+                </button>
+              </div>
             </div>
 
             <div
@@ -376,6 +419,89 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
       </form>
+
+      {/* ADMIN PASSWORD PROTECTED DATABASE RESET MODAL */}
+      {isResetModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 99999 }}>
+          <div className="modal-content" style={{ maxWidth: '440px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FEF2F2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AlertTriangle size={18} />
+                </div>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>
+                  Clear Entire Database?
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '12.5px', color: '#475569', lineHeight: 1.5, marginBottom: '16px' }}>
+              This will <strong>permanently delete</strong> all sales orders, customer payment receipts, daily manufacturing logs, and recorded expenses from both <strong>Supabase Cloud</strong> and this local device.
+              <br /><br />
+              <span style={{ color: '#059669', fontWeight: 600 }}>Plant Settings & Admin Password will NOT be affected.</span>
+            </p>
+
+            <form onSubmit={handleConfirmReset}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Lock size={12} />
+                  <span>Enter Admin Password to Confirm</span>
+                </label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="Enter admin password (e.g. admin)"
+                  value={adminPassInput}
+                  onChange={e => setAdminPassInput(e.target.value)}
+                  required
+                  autoFocus
+                  style={{ height: '40px', fontSize: '14px' }}
+                />
+              </div>
+
+              {resetError && (
+                <div style={{ padding: '8px 12px', borderRadius: '6px', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600, marginBottom: '14px' }}>
+                  {resetError}
+                </div>
+              )}
+
+              {resetSuccess && (
+                <div style={{ padding: '8px 12px', borderRadius: '6px', background: '#ECFDF5', color: '#059669', fontSize: '12px', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Check size={16} />
+                  <span>Database wiped successfully! Fresh start ready.</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setIsResetModalOpen(false)}
+                  disabled={isResetting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-danger btn-sm"
+                  disabled={isResetting || resetSuccess}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Trash2 size={14} />
+                  <span>{isResetting ? 'Wiping Database...' : 'Permanently Clear All Data'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

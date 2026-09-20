@@ -134,6 +134,8 @@ export interface PlantSummary {
   totalRevenue: number;
   totalProductionCost: number;
   totalOverheadCost: number;
+  totalCostOfSold: number;
+  grossProfit: number;
   totalNetProfit: number;
   averageCostPerBrick: number;
   lossDayCount: number;

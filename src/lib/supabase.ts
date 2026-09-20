@@ -377,7 +377,7 @@ export async function fetchAllFromCloud(): Promise<{
       customerPayments?: CustomerPayment[];
     } = {};
 
-    if (entriesRes.status === 'fulfilled' && !entriesRes.value.error && entriesRes.value.data && entriesRes.value.data.length > 0) {
+    if (entriesRes.status === 'fulfilled' && !entriesRes.value.error && entriesRes.value.data) {
       result.entries = entriesRes.value.data.map((r: any) => ({
         id: r.id,
         date: r.date,
@@ -401,7 +401,7 @@ export async function fetchAllFromCloud(): Promise<{
       }));
     }
 
-    if (expensesRes.status === 'fulfilled' && !expensesRes.value.error && expensesRes.value.data && expensesRes.value.data.length > 0) {
+    if (expensesRes.status === 'fulfilled' && !expensesRes.value.error && expensesRes.value.data) {
       result.expenses = expensesRes.value.data.map((r: any) => ({
         id: r.id,
         date: r.date,
@@ -412,7 +412,7 @@ export async function fetchAllFromCloud(): Promise<{
       }));
     }
 
-    if (salesRes.status === 'fulfilled' && !salesRes.value.error && salesRes.value.data && salesRes.value.data.length > 0) {
+    if (salesRes.status === 'fulfilled' && !salesRes.value.error && salesRes.value.data) {
       result.salesOrders = salesRes.value.data.map((r: any) => ({
         id: r.id,
         date: r.date,
@@ -430,7 +430,7 @@ export async function fetchAllFromCloud(): Promise<{
       }));
     }
 
-    if (paymentsRes.status === 'fulfilled' && !paymentsRes.value.error && paymentsRes.value.data && paymentsRes.value.data.length > 0) {
+    if (paymentsRes.status === 'fulfilled' && !paymentsRes.value.error && paymentsRes.value.data) {
       result.customerPayments = paymentsRes.value.data.map((r: any) => ({
         id: r.id,
         orderId: r.order_id,
@@ -458,5 +458,34 @@ export async function fetchAllFromCloud(): Promise<{
   } catch (err) {
     console.warn('Error fetching all cloud data:', err);
     return null;
+  }
+}
+
+/**
+ * Permanently clears operational data from Supabase cloud database tables.
+ * Used by the Admin "Clear Database" reset tool.
+ */
+export async function clearAllCloudData(): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 1. Delete customer payments first (child rows)
+    const { error: pErr } = await supabase.from('customer_payments').delete().neq('id', '___NEVER_MATCH___');
+    if (pErr) console.warn('Clear customer_payments notice:', pErr.message);
+
+    // 2. Delete sales orders
+    const { error: sErr } = await supabase.from('sales_orders').delete().neq('id', '___NEVER_MATCH___');
+    if (sErr) console.warn('Clear sales_orders notice:', sErr.message);
+
+    // 3. Delete production entries
+    const { error: eErr } = await supabase.from('production_entries').delete().neq('id', '___NEVER_MATCH___');
+    if (eErr) console.warn('Clear production_entries notice:', eErr.message);
+
+    // 4. Delete expenses
+    const { error: xErr } = await supabase.from('expenses').delete().neq('id', '___NEVER_MATCH___');
+    if (xErr) console.warn('Clear expenses notice:', xErr.message);
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to clear cloud database:', err);
+    return { success: false, error: err?.message || 'Failed to clear cloud database' };
   }
 }

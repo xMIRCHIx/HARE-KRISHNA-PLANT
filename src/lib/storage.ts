@@ -198,3 +198,14 @@ export function importBackupJSON(jsonStr: string): boolean {
     return false;
   }
 }
+
+/**
+ * Resets local storage operational data (sales, payments, production entries, expenses).
+ * Preserves plant settings and auth session.
+ */
+export function clearAllStoredOperationalData(): void {
+  localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(INITIAL_ENTRIES));
+  localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(INITIAL_EXPENSES));
+  localStorage.setItem(STORAGE_KEYS.SALES_ORDERS, JSON.stringify(INITIAL_SALES_ORDERS));
+  localStorage.setItem(STORAGE_KEYS.CUSTOMER_PAYMENTS, JSON.stringify(INITIAL_CUSTOMER_PAYMENTS));
+}
