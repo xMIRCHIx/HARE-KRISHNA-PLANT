@@ -79,63 +79,27 @@ export const App: React.FC = () => {
 
       if (ok) {
         try {
-          // 1. Fetch initial cloud data
+          // Fetch authoritative cloud data directly from Supabase
           const cloudData = await fetchAllFromCloud();
-          if (!isMounted) return;
+          if (!isMounted || !cloudData) return;
 
-          // 2. Identify and push any local records that never synced to cloud
-          const localEntries = getStoredEntries();
-          const localExpenses = getStoredExpenses();
-          const localOrders = getStoredSalesOrders();
-          const localPayments = getStoredCustomerPayments();
+          // Mirror cloud database to React state and sync local cache
+          const freshEntries = cloudData.entries || [];
+          const freshExpenses = cloudData.expenses || [];
+          const freshOrders = cloudData.salesOrders || [];
+          const freshPayments = cloudData.customerPayments || [];
 
-          const cloudEntryIds = new Set(cloudData?.entries?.map(e => e.id) || []);
-          const cloudExpenseIds = new Set(cloudData?.expenses?.map(x => x.id) || []);
-          const cloudOrderIds = new Set(cloudData?.salesOrders?.map(o => o.id) || []);
-          const cloudPaymentIds = new Set(cloudData?.customerPayments?.map(p => p.id) || []);
+          setEntries(freshEntries);
+          saveStoredEntries(freshEntries);
 
-          const unsyncedEntries = localEntries.filter(e => !cloudEntryIds.has(e.id));
-          for (const e of unsyncedEntries) {
-            await syncEntryToCloud(e);
-          }
+          setExpenses(freshExpenses);
+          saveStoredExpenses(freshExpenses);
 
-          const unsyncedExpenses = localExpenses.filter(x => !cloudExpenseIds.has(x.id));
-          for (const x of unsyncedExpenses) {
-            await syncExpenseToCloud(x);
-          }
+          setSalesOrders(freshOrders);
+          saveStoredSalesOrders(freshOrders);
 
-          const unsyncedOrders = localOrders.filter(o => !cloudOrderIds.has(o.id));
-          for (const o of unsyncedOrders) {
-            await syncSalesOrderToCloud(o);
-          }
-
-          const unsyncedPayments = localPayments.filter(p => !cloudPaymentIds.has(p.id));
-          for (const p of unsyncedPayments) {
-            await syncPaymentToCloud(p);
-          }
-
-          // 3. Load authoritative dataset straight from Supabase
-          const hadUnsynced = unsyncedEntries.length > 0 || unsyncedExpenses.length > 0 || unsyncedOrders.length > 0 || unsyncedPayments.length > 0;
-          const freshCloud = hadUnsynced ? await fetchAllFromCloud() : cloudData;
-
-          if (!isMounted || !freshCloud) return;
-
-          if (freshCloud.entries !== undefined) {
-            setEntries(freshCloud.entries);
-            saveStoredEntries(freshCloud.entries);
-          }
-          if (freshCloud.expenses !== undefined) {
-            setExpenses(freshCloud.expenses);
-            saveStoredExpenses(freshCloud.expenses);
-          }
-          if (freshCloud.salesOrders !== undefined) {
-            setSalesOrders(freshCloud.salesOrders);
-            saveStoredSalesOrders(freshCloud.salesOrders);
-          }
-          if (freshCloud.customerPayments !== undefined) {
-            setCustomerPayments(freshCloud.customerPayments);
-            saveStoredCustomerPayments(freshCloud.customerPayments);
-          }
+          setCustomerPayments(freshPayments);
+          saveStoredCustomerPayments(freshPayments);
         } catch (err) {
           console.warn('Supabase initialization sync exception:', err);
         }
