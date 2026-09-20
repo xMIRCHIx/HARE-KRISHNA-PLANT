@@ -78,6 +78,13 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
     entries
   );
 
+  const estimatedMatCost = (Number(cementBags) || 0) * (Number(cementRate) || 0) +
+    (Number(dustTrucks) || 0) * (Number(dustRate) || 0) +
+    (Number(raakhQty) || 0) * (Number(raakhRate) || 0);
+  const estimatedLaborCost = morningEst.recommendedTarget * (Number(workerRate) || 0.60);
+  const estimatedTotalCost = estimatedMatCost + estimatedLaborCost;
+  const estimatedCostPerBrick = morningEst.recommendedTarget > 0 ? estimatedTotalCost / morningEst.recommendedTarget : 0;
+
   const previewEntry: ProductionEntry = {
     id: 'preview',
     date,
@@ -400,6 +407,56 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Pre-Shift Expected Output & Cost Banner */}
+                {costMode === 'ratio' && morningEst.recommendedTarget > 0 && (
+                  <div style={{
+                    padding: '14px 16px',
+                    background: '#F5F3FF',
+                    borderRadius: '10px',
+                    border: '1.5px solid #DDD6FE',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                    marginTop: '8px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#7C3AED', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Sparkles size={18} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 800, color: '#5B21B6' }}>
+                          सुबहा का अंदाज़ा (Pre-Shift Production & Cost Estimate)
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: '#6D28D9', marginTop: '2px' }}>
+                          In raw materials se approx <strong>{morningEst.recommendedTarget.toLocaleString('en-IN')} eent</strong> banni chahiye (@ <strong>₹{estimatedCostPerBrick.toFixed(2)}/brick</strong> est. cost)
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#6D28D9', textTransform: 'uppercase' }}>Est. Total (Maal + Labor)</div>
+                        <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: '#4C1D95' }}>
+                          ₹{Math.round(estimatedTotalCost).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => {
+                          setSingleProduced(morningEst.recommendedTarget);
+                        }}
+                        style={{ fontSize: '11px', padding: '5px 10px', background: '#FFFFFF', borderColor: '#C4B5FD', color: '#6D28D9', fontWeight: 600 }}
+                        title="Copy estimated count to Step 1 actual pressed count"
+                      >
+                        Use as Shift Count
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="form-group">
@@ -627,27 +684,41 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
               </div>
             </div>
 
-            {/* Yield Check */}
+            {/* Yield & Target Comparison: Pre-Shift Target vs Actual Realized */}
             <div
               style={{
                 marginTop: '14px',
-                padding: '12px',
+                padding: '12px 14px',
                 background: '#FFFFFF',
                 borderRadius: '10px',
                 border: '1px solid #E2E8F0',
-                fontSize: '11.5px'
+                fontSize: '12px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#7C3AED' }}>
-                <Sparkles size={13} />
-                <span>Estimated Target: ~{morningEst.recommendedTarget.toLocaleString('en-IN')} pcs</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontWeight: 700, color: '#475569' }}>Pre-Shift Target:</span>
+                <span className="tabular-nums" style={{ fontWeight: 700, color: '#7C3AED' }}>
+                  ~{morningEst.recommendedTarget.toLocaleString('en-IN')} pcs (@ ₹{estimatedCostPerBrick.toFixed(2)})
+                </span>
               </div>
-              <div style={{ marginTop: '3px', color: '#64748B' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontWeight: 700, color: '#475569' }}>Actual Shift Output:</span>
+                <span className="tabular-nums" style={{ fontWeight: 800, color: '#0F172A' }}>
+                  {totalProduced.toLocaleString('en-IN')} pcs (@ ₹{liveCalc.costPerBrick.toFixed(2)})
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px dashed #E2E8F0', fontSize: '11.5px' }}>
+                <span style={{ color: '#64748B' }}>Actual Cement Yield:</span>
+                <span className="tabular-nums" style={{ fontWeight: 700, color: totalProduced >= morningEst.recommendedTarget ? '#059669' : '#D97706' }}>
+                  {cementBags > 0 ? Math.round(totalProduced / cementBags) : 0} bricks / bag
+                </span>
+              </div>
+              <div style={{ marginTop: '6px', fontSize: '11px', color: '#64748B' }}>
                 {totalProduced >= morningEst.recommendedTarget ? (
-                  <span style={{ color: '#059669', fontWeight: 600 }}>✓ Output meets/exceeds recipe batch yield!</span>
+                  <span style={{ color: '#059669', fontWeight: 600 }}>✓ Target achieved! Cement efficiency optimal.</span>
                 ) : (
                   <span style={{ color: '#D97706', fontWeight: 600 }}>
-                    ⚠ Variance of {morningEst.recommendedTarget - totalProduced} bricks vs. theoretical yield.
+                    ⚠ Loss of {morningEst.recommendedTarget - totalProduced} bricks vs recipe. Check mix or leakage.
                   </span>
                 )}
               </div>
