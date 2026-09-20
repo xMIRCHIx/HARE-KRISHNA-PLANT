@@ -122,7 +122,7 @@ export function estimateMorningTarget(
   // Fixed ratio mode
   const cementRatio = settings.cementRatio || 120; // bricks per 50kg bag (unconfirmed placeholder default)
   const dustRatio = settings.dustRatio || 10000; // bricks per truck/trolley (unconfirmed placeholder default)
-  const raakhRatio = settings.raakhRatio || 2500; // bricks per raakh unit (unconfirmed placeholder default)
+  const raakhRatio = settings.raakhRatio || 2500; // bricks per ton of fly ash (unconfirmed placeholder default)
 
   const targetFromCement = Math.round(cementBags * cementRatio);
   const targetFromDust = Math.round(dustTrucks * dustRatio);

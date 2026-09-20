@@ -53,8 +53,8 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
       'Cement Rate (₹)',
       'Dust Trucks',
       'Dust Rate (₹)',
-      'Raakh Qty',
-      'Raakh Rate (₹)',
+      'Fly Ash (Tons)',
+      'Fly Ash Rate (₹)',
       'Worker Rate (₹)',
       'Total Material Cost (₹)',
       'Total Labor Cost (₹)',
@@ -276,7 +276,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                               <ul style={{ listStyle: 'none', paddingLeft: 0, marginTop: '4px', color: 'var(--ink-muted)' }}>
                                 <li>• Cement: {entry.cementBags} bags @ ₹{entry.cementRate} = ₹{entry.cementBags * entry.cementRate}</li>
                                 <li>• Stone Dust: {entry.dustTrucks} {settings.unitDustLabel || 'Trucks'} @ ₹{entry.dustRate} = ₹{entry.dustTrucks * entry.dustRate}</li>
-                                <li>• Fly Ash: {entry.raakhQty} {settings.unitRaakhLabel || 'Trucks'} @ ₹{entry.raakhRate} = ₹{entry.raakhQty * entry.raakhRate}</li>
+                                <li>• Fly Ash: {entry.raakhQty} {settings.unitRaakhLabel || 'Tons'} @ ₹{entry.raakhRate} = ₹{entry.raakhQty * entry.raakhRate}</li>
                               </ul>
                             </div>
 

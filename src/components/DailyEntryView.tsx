@@ -583,7 +583,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                 {/* Fly Ash / Raakh Row */}
                 <div className="material-row-grid">
                   <div className="form-group">
-                    <label className="form-label">Fly Ash / Raakh ({settings.unitRaakhLabel || 'Trucks'})</label>
+                    <label className="form-label">Fly Ash / Raakh ({settings.unitRaakhLabel || 'Tons'})</label>
                     <input
                       type="number"
                       step="0.1"
@@ -595,7 +595,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Rate (₹ / {settings.unitRaakhLabel || 'Truck'})</label>
+                    <label className="form-label">Rate (₹ / {settings.unitRaakhLabel || 'Ton'})</label>
                     <input
                       type="number"
                       min="0"

@@ -1488,7 +1488,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#64748B' }} />
-                  Fly Ash ({latestEntry ? `${latestEntry.raakhQty} ${settings.unitRaakhLabel || 'Trucks'} @ ₹${latestEntry.raakhRate}` : `Fly Ash @ ₹450 / ~${settings.raakhRatio || 2500} ${settings.unitRaakhLabel || 'Trucks'}`})
+                  Fly Ash ({latestEntry ? `${latestEntry.raakhQty} ${settings.unitRaakhLabel || 'Tons'} @ ₹${latestEntry.raakhRate}` : `Fly Ash @ ₹450 / Ton (~${settings.raakhRatio || 2500} pcs)`})
                 </span>
                 <span className="tabular-nums" style={{ fontWeight: 700, color: '#0F172A' }}>
                   ₹{(latestCalc && latestEntry && latestEntry.produced > 0 ? ((latestEntry.raakhQty * latestEntry.raakhRate) / latestEntry.produced) : baselineRaakhPerBrick).toFixed(2)}
@@ -2340,7 +2340,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <th>Produced (pcs)</th>
                         <th>Cement (Bags)</th>
                         <th>Stone Dust ({settings.unitDustLabel || 'Trucks'})</th>
-                        <th>Fly Ash ({settings.unitRaakhLabel || 'Trucks'})</th>
+                        <th>Fly Ash ({settings.unitRaakhLabel || 'Tons'})</th>
                         <th>Labor (₹/pc)</th>
                         <th>Cost / Brick</th>
                         <th>Shift Margin</th>

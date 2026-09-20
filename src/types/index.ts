@@ -99,15 +99,15 @@ export interface Settings {
   productionEstimateMode: ProductionEstimateMode; // 'fixed' | 'auto'
   cementRatio: number; // bricks per cement bag (e.g. 120) - unconfirmed placeholder default
   dustRatio: number; // bricks per dust truck (e.g. 10000) - unconfirmed placeholder default
-  raakhRatio: number; // bricks per raakh unit (e.g. 2500) - unconfirmed placeholder default
+  raakhRatio: number; // bricks per fly ash ton (e.g. 2500) - unconfirmed placeholder default
   defaultWorkerRate: number; // default 0.60
   defaultSalePrice: number; // default 4.00
   overheadSplitMode: OverheadSplitMode; // 'split' | 'separate'
   adminPassword: string; // default "hkb@2026"
   openingStock: number; // yard opening stock count
   openingStockDate: string;
-  unitRaakhLabel: string; // "Trucks" or "Trolley" or "Kg" or "Bori"
-  unitDustLabel: string; // "Trucks (800-900 CFT)" or "Trolley"
+  unitRaakhLabel: string; // "Tons"
+  unitDustLabel: string; // "Trucks (800-900 CFT)"
   allowUdhaarCredit: boolean; // udhaar / credit tracking toggle
   // Batch-based Prediction settings
   batchCementBags?: number; // cement bags per standard mixer batch (default: 1)

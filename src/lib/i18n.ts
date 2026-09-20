@@ -132,7 +132,7 @@ export const translations: Record<Language, Translations> = {
       rowDust: '2. Stone Dust',
       rowDustFormula: '(Trucks Used × Truck Rate) ÷ Total Bricks Produced',
       rowRaakh: '3. Fly Ash / Raakh',
-      rowRaakhFormula: '(Qty Used × Unit Rate) ÷ Total Bricks Produced',
+      rowRaakhFormula: '(Tons Used × Ton Rate) ÷ Total Bricks Produced',
       rowWorker: '4. Worker Labor Payoff',
       rowWorkerFormula: 'Fixed Piece-Rate Payoff per Brick',
       rowTotalCost: 'Total Manufacturing Cost',
@@ -145,7 +145,7 @@ export const translations: Record<Language, Translations> = {
       step1Title: 'STEP 1: OPEN DAILY ENTRY',
       step1Desc: 'At the end of the day, navigate to the Daily Entry tab. Enter the total brick count produced (single count or per shift/batch).',
       step2Title: 'STEP 2: ENTER MATERIALS USED',
-      step2Desc: 'Input actual cement bags, dust trucks, and fly ash quantity used today. The right panel instantly displays live cost-per-brick and margin.',
+      step2Desc: 'Input actual cement bags, dust trucks, and fly ash tons used today. The right panel instantly displays live cost-per-brick and margin.',
       step3Title: 'STEP 3: LOG SALES & SAVE',
       step3Desc: 'Enter dispatches/sales count and sale rate. Click "Save Entry" — stock, worker wages, and ledger are updated simultaneously.'
     }
@@ -206,7 +206,7 @@ export const translations: Record<Language, Translations> = {
       rowDust: '2. स्टोन डस्ट (Stone Dust)',
       rowDustFormula: '(गाड़ी संख्या × गाड़ी का रेट) ÷ कुल बनी ईंटें',
       rowRaakh: '3. राख / फ्लाई ऐश (Fly Ash)',
-      rowRaakhFormula: '(राख की मात्रा × दर) ÷ कुल बनी ईंटें',
+      rowRaakhFormula: '(राख टन × टन दर) ÷ कुल बनी ईंटें',
       rowWorker: '4. मजदूर लेबर पे-ऑफ (Worker Labor)',
       rowWorkerFormula: 'तय मजदूरी दर (Fixed Payoff Rate)',
       rowTotalCost: 'कुल दैनिक लागत (Total Daily Cost)',
@@ -219,7 +219,7 @@ export const translations: Record<Language, Translations> = {
       step1Title: 'कदम 1: DAILY ENTRY खोलें',
       step1Desc: 'शाम को "Daily Entry" टैब में जाएँ। आज कितनी ईंटें बनीं वह संख्या दर्ज करें (सिंगल या शिफ्ट अनुसार)।',
       step2Title: 'कदम 2: कच्चा माल डालें',
-      step2Desc: 'आज जितनी सीमेंट की बोरियां, डस्ट गाड़ी और राख लगी, वह भरें। दाईं ओर तुरंत एक ईंट का भाव और मुनाफा दिख जाएगा।',
+      step2Desc: 'आज जितनी सीमेंट की बोरियां, डस्ट गाड़ी और राख टन लगी, वह भरें। दाईं ओर तुरंत एक ईंट का भाव और मुनाफा दिख जाएगा।',
       step3Title: 'कदम 3: बिक्री व सेव करें',
       step3Desc: 'आज जितनी ईंटें बिकीं और भाव दर्ज करके "Save Entry" दबाएँ। आपका स्टॉक, लेबर हिसाब और लेजर अपडेट हो जाएगा!'
     }

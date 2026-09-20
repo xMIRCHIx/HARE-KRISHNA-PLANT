@@ -207,10 +207,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Raakh Unit</label>
+                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Fly Ash Ton</label>
                 <input
                   type="number"
-                  min="100"
+                  min="10"
                   className="form-input tabular-nums"
                   value={formData.raakhRatio}
                   onChange={e => handleChange('raakhRatio', Number(e.target.value))}
@@ -237,11 +237,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Trucks"
-                  value={formData.unitRaakhLabel || 'Trucks'}
+                  placeholder="Tons"
+                  value={formData.unitRaakhLabel || 'Tons'}
                   onChange={e => handleChange('unitRaakhLabel', e.target.value)}
                 />
-                <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. Trucks, Trolley, Bori, Kg</span>
+                <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. Tons (Metric Tons)</span>
               </div>
             </div>
 
@@ -268,7 +268,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
               <p style={{ fontSize: '12px', color: 'var(--ink-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
                 Used to predict daily production when entering cement bags.
-                <em> Note: Dust and fly ash quantities are volume/trolley reference estimates and do not affect the cement-based prediction calculation.</em>
+                <em> Note: Dust is measured on a truck/trolley volume basis and fly ash in Metric Tons for recipe reference, but do not affect the cement-based prediction calculation.</em>
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
@@ -322,17 +322,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: '13px' }}>
-                    Batch Fly Ash (Ref only)
+                    Batch Fly Ash (Tons - Ref only)
                   </label>
                   <input
                     type="number"
-                    step="0.001"
+                    step="0.01"
                     min="0"
                     className="form-input tabular-nums"
-                    value={formData.batchFlyAshQty ?? 0.04}
+                    value={formData.batchFlyAshQty ?? 0.05}
                     onChange={e => handleChange('batchFlyAshQty', Number(e.target.value))}
                   />
-                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. 0.04 unit / batch</span>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. 0.05 Ton (~50 kg raakh)</span>
                 </div>
               </div>
             </div>

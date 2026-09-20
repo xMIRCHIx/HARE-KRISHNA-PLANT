@@ -13,19 +13,19 @@ export const DEFAULT_SETTINGS: Settings = {
   productionEstimateMode: 'fixed',
   cementRatio: 120, // 120 bricks per 50kg bag (unconfirmed placeholder default)
   dustRatio: 10000, // 10,000 bricks per 800-900 CFT truck (unconfirmed placeholder default)
-  raakhRatio: 2500, // 2,500 bricks per unit (unconfirmed placeholder default)
+  raakhRatio: 2500, // 2,500 bricks per Ton of fly ash (unconfirmed placeholder default)
   defaultWorkerRate: 0.60, // ₹0.60 per brick payoff
   defaultSalePrice: 4.00, // ₹4.00 benchmark selling price
   overheadSplitMode: 'separate',
   adminPassword: 'admin',
   openingStock: 0, // Fresh yard balance to be configured by owner
   openingStockDate: new Date().toISOString().split('T')[0],
-  unitRaakhLabel: 'Trucks',
+  unitRaakhLabel: 'Tons',
   unitDustLabel: 'Trucks (800-900 CFT)',
   allowUdhaarCredit: true,
   batchCementBags: 1,
   batchDustQty: 0.01,
-  batchFlyAshQty: 0.04,
+  batchFlyAshQty: 0.05,
   bricksPerBatch: 120,
   isRatioConfirmed: false
 };
@@ -44,15 +44,16 @@ export function getStoredSettings(): Settings {
       return DEFAULT_SETTINGS;
     }
     const parsed = JSON.parse(raw);
-    // Auto-migrate any legacy Ton labels back to Trucks/CFT
+    // Auto-migrate any legacy Ton labels back to Trucks/CFT for stone dust
     if (parsed.unitDustLabel && parsed.unitDustLabel.toLowerCase().includes('ton')) {
       parsed.unitDustLabel = 'Trucks (800-900 CFT)';
       if (parsed.dustRatio === 600) parsed.dustRatio = 10000;
       if (parsed.batchDustQty === 0.18) parsed.batchDustQty = 0.01;
-      if (parsed.batchFlyAshQty === 0.05) parsed.batchFlyAshQty = 0.04;
     }
-    if (parsed.unitRaakhLabel && parsed.unitRaakhLabel.toLowerCase().includes('ton')) {
-      parsed.unitRaakhLabel = 'Trucks';
+    // Fly ash stays in Metric Tons as plant measures raakh in Tons
+    if (!parsed.unitRaakhLabel || parsed.unitRaakhLabel.toLowerCase().includes('truck')) {
+      parsed.unitRaakhLabel = 'Tons';
+      if (!parsed.batchFlyAshQty || parsed.batchFlyAshQty === 0.04) parsed.batchFlyAshQty = 0.05;
     }
     // Ensure placeholder defaults are never pre-confirmed as verified
     if (parsed.cementRatio === 120 && (parsed.dustRatio === 10000 || parsed.dustRatio === 600) && parsed.raakhRatio === 2500) {
