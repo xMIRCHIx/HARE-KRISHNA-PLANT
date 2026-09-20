@@ -839,7 +839,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                         }}
                       >
                         <div style={{ fontWeight: 700, color: '#475569', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '9.5px' }}>
-                          Payment & Installment Schedule / भुगतान विवरण:
+                          Payment & Installment Schedule:
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           {installmentsList.map((inst) => (
@@ -936,7 +936,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CreditCard size={16} color="#7C3AED" />
                 <span style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Payment Installments & Jama Receipts Ledger / भुगतान व किस्त विवरण
+                  Payment Installments & Receipts Ledger
                 </span>
               </div>
 
@@ -947,7 +947,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
             {installmentsList.length === 0 ? (
               <div style={{ padding: '12px', textAlign: 'center', color: '#94A3B8', fontSize: '12px', background: '#F8FAFC', borderRadius: '8px' }}>
-                No payments received yet. Entire order billed on credit (उधार / बकाया).
+                No payments received yet. Entire order billed on credit.
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
@@ -955,9 +955,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', color: '#475569' }}>
                       <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>#</th>
-                      <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>DATE (दिनांक)</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>DATE</th>
                       <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>INSTALLMENT / STAGE</th>
-                      <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>MODE (माध्यम)</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>MODE</th>
                       <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, fontSize: '10px' }}>VEHICLE / NOTE / REF</th>
                       <th style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, fontSize: '10px' }}>AMOUNT (₹)</th>
                       <th style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 700, fontSize: '10px' }}>RECEIPT</th>

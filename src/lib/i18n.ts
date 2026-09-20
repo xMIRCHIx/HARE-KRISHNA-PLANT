@@ -131,7 +131,7 @@ export const translations: Record<Language, Translations> = {
       rowCementFormula: '(Bags Used × Day Rate) ÷ Total Bricks Produced',
       rowDust: '2. Stone Dust',
       rowDustFormula: '(Trucks Used × Truck Rate) ÷ Total Bricks Produced',
-      rowRaakh: '3. Fly Ash / Raakh',
+      rowRaakh: '3. Fly Ash',
       rowRaakhFormula: '(Tons Used × Ton Rate) ÷ Total Bricks Produced',
       rowWorker: '4. Worker Labor Payoff',
       rowWorkerFormula: 'Fixed Piece-Rate Payoff per Brick',

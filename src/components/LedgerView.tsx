@@ -166,7 +166,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                     </div>
                     <div>
                       <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ink)' }}>
-                        No Manufacturing Shifts Logged Yet (कोई प्रोडक्शन एंट्री नहीं मिली)
+                        No Manufacturing Shifts Logged Yet
                       </div>
                       <div style={{ fontSize: '13px', color: 'var(--ink-muted)', marginTop: '4px', maxWidth: '460px', lineHeight: 1.5 }}>
                         Shift manufacturing output, cement/dust consumption, worker labor, and per-brick production costs will appear here date-wise once you record your first shift.
@@ -178,7 +178,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                       onClick={onNavigateToEntry}
                       style={{ marginTop: '10px' }}
                     >
-                      + Log First Shift Output (नई प्रोडक्शन एंट्री दर्ज करें)
+                      + Log First Shift Output
                     </button>
                   </div>
                 </td>

@@ -203,8 +203,8 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
           </h2>
           <p style={{ fontSize: '13px', color: '#64748B', marginTop: '2px', fontWeight: 500 }}>
             {entryMode === 'planning'
-              ? '🌅 Morning Planner: Raw materials daalkar dekhein kitni eent banegi aur kitna kharcha aayega.'
-              : '🌇 Evening Shift Closing: Machine counter se actual output daalein aur Ledger me save karein.'}
+              ? '🌅 Morning Planner: Enter raw materials to estimate finished brick yield and unit cost.'
+              : '🌇 Evening Shift Closing: Enter actual press output from machine counter and save to ledger.'}
           </p>
         </div>
 
@@ -215,14 +215,14 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
               className={`segmented-btn ${entryMode === 'planning' ? 'active' : ''}`}
               onClick={() => setEntryMode('planning')}
             >
-              🌅 Morning Planner (सुबहा का अंदाज़ा)
+              🌅 Morning Planner
             </button>
             <button
               type="button"
               className={`segmented-btn ${entryMode === 'closing' ? 'active' : ''}`}
               onClick={() => setEntryMode('closing')}
             >
-              🌇 Evening Shift Log (शाम का हिसाब)
+              🌇 Evening Shift Log
             </button>
           </div>
 
@@ -665,7 +665,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
                   <div>
                     <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', marginBottom: '4px' }}>
-                      Itne Maal Se Itni Eent Banegi
+                      Estimated Finished Brick Output
                     </div>
                     <div className="tabular-nums" style={{ fontSize: '36px', fontWeight: 900, color: '#059669', lineHeight: 1 }}>
                       ~{predictedBricks.toLocaleString('en-IN')}
@@ -698,7 +698,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                 </div>
               ) : (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#94A3B8', fontSize: '14px' }}>
-                  ↑ Upar Step 1 me Cement Bags daalein — production auto-calculate hoga
+                  ↑ Enter Cement Bags in Step 1 above to auto-calculate expected production
                 </div>
               )}
 
@@ -779,7 +779,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   onChange={e => setSoldStr(e.target.value)}
                 />
                 <span style={{ fontSize: '11px', color: '#64748B' }}>
-                  Agar factory press se direct gaadi load hui ho. (Aamtaur par 0, bikri Sales tab me hoti hai).
+                  Direct vehicle dispatch off the press line. (Standard is 0; track customer sales in Sales tab).
                 </span>
               </div>
 
@@ -798,7 +798,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   onChange={e => setSalePriceStr(e.target.value)}
                 />
                 <span style={{ fontSize: '11px', color: '#64748B' }}>
-                  Margin compare karne ke liye selling rate (e.g. ₹4.50 ya ₹5.00)
+                  Benchmark selling rate to compare profit margin (e.g. ₹4.50 or ₹5.00)
                 </span>
               </div>
             </div>

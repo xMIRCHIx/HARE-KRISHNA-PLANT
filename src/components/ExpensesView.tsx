@@ -61,7 +61,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
     }
 
     if (category === 'Other' && !otherDetail.trim()) {
-      alert('Please specify what the "Other" expense is for (Other me kya kharcha hua h).');
+      alert('Please specify what the "Other" expense is for.');
       return;
     }
 
@@ -232,20 +232,20 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
               >
                 <label className="form-label" style={{ color: '#7C3AED', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                   <CircleDollarSign size={16} />
-                  <span>Specify Other Expense (Other me kya kharcha hua h?) *</span>
+                  <span>Specify Purpose of Other Expense *</span>
                 </label>
                 <input
                   type="text"
                   className="form-input"
                   style={{ background: '#FFFFFF', borderColor: '#C4B5FD', fontSize: '13.5px', fontWeight: 600 }}
-                  placeholder="e.g. Chai-Nashta, Office Stationery, Municipal Tax, Hardware store tools, Challan, Office repair..."
+                  placeholder="e.g. Refreshments, Office Stationery, Municipal Fee, Hardware Tools, Minor Repairs..."
                   value={otherDetail}
                   onChange={e => setOtherDetail(e.target.value)}
                   required
                   autoFocus
                 />
                 <span style={{ fontSize: '11.5px', color: '#6D28D9', marginTop: '4px', display: 'block' }}>
-                  Yahan likhein ki ye other kharcha kis cheez ke liye kiya gaya hai.
+                  Describe the operational purpose of this expense.
                 </span>
               </div>
             )}

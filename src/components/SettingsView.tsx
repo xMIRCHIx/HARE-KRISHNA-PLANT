@@ -249,7 +249,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>
-                  Standard Mixer Batch Recipe (दैनिक प्रोडक्शन प्रेडिक्शन)
+                  Standard Mixer Batch Recipe
                 </h4>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: formData.isRatioConfirmed ? '#166534' : '#64748B' }}>
@@ -524,7 +524,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
                   <Trash2 size={14} />
-                  <span>Clear / Reset Database (डेटाबेस रीसेट)</span>
+                  <span>Clear / Reset Database</span>
                 </button>
               </div>
             </div>
