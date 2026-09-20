@@ -77,8 +77,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveSettings(formData);
-    setSaveMessage('Settings saved successfully!');
+    const updated: Settings = {
+      ...formData,
+      isRatioConfirmed: true // Confirmed by admin saving settings
+    };
+    setFormData(updated);
+    onSaveSettings(updated);
+    setSaveMessage('Settings saved successfully! Recipe confirmed.');
     setTimeout(() => setSaveMessage(null), 3000);
   };
 
@@ -179,7 +184,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   min="10"
                   className="form-input tabular-nums"
                   value={formData.cementRatio}
-                  onChange={e => handleChange('cementRatio', Number(e.target.value))}
+                  onChange={e => {
+                    const num = Number(e.target.value);
+                    handleChange('cementRatio', num);
+                    handleChange('bricksPerBatch', num);
+                  }}
                 />
               </div>
 
@@ -203,6 +212,87 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   value={formData.raakhRatio}
                   onChange={e => handleChange('raakhRatio', Number(e.target.value))}
                 />
+              </div>
+            </div>
+
+            {/* Standard Mixer Batch Prediction Configuration */}
+            <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>
+                  Standard Mixer Batch Recipe (दैनिक प्रोडक्शन प्रेडिक्शन)
+                </h4>
+                <span className={`badge ${formData.isRatioConfirmed ? 'badge-good' : 'badge-warn'}`}>
+                  {formData.isRatioConfirmed ? '✓ Ratio Confirmed' : '⚠ Default / Unconfirmed'}
+                </span>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--ink-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
+                Used to predict daily production when entering cement bags.
+                <em> Note: Dust and fly ash quantities are shown for recipe reference but do not affect the prediction calculation.</em>
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '13px' }}>
+                    Cement Bags / Batch
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    className="form-input tabular-nums"
+                    value={formData.batchCementBags ?? 1}
+                    onChange={e => handleChange('batchCementBags', Number(e.target.value))}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Standard: 1 bag (50 kg)</span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '13px' }}>
+                    Bricks Produced / Batch
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-input tabular-nums"
+                    value={formData.bricksPerBatch ?? formData.cementRatio ?? 120}
+                    onChange={e => {
+                      const num = Number(e.target.value);
+                      handleChange('bricksPerBatch', num);
+                      handleChange('cementRatio', num);
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Bricks per 1 mixer batch</span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '13px' }}>
+                    Batch Dust (Reference only)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    className="form-input tabular-nums"
+                    value={formData.batchDustQty ?? 0.01}
+                    onChange={e => handleChange('batchDustQty', Number(e.target.value))}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Dust qty / mixer batch</span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '13px' }}>
+                    Batch Fly Ash (Reference only)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    className="form-input tabular-nums"
+                    value={formData.batchFlyAshQty ?? 0.04}
+                    onChange={e => handleChange('batchFlyAshQty', Number(e.target.value))}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Fly ash qty / mixer batch</span>
+                </div>
               </div>
             </div>
           </div>

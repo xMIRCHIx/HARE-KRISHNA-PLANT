@@ -38,39 +38,64 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
 
   const [entryMode, setEntryMode] = useState<'closing' | 'planning'>('closing');
 
+  // Production count and dispatches (strings so backspace cleanly clears 0)
+  const [singleProducedStr, setSingleProducedStr] = useState('8400');
+  const [soldStr, setSoldStr] = useState('0');
+  const [salePriceStr, setSalePriceStr] = useState(String(settings.defaultSalePrice || 4.5));
+
   // Multi-run lines or single count
   const [isMultiRun, setIsMultiRun] = useState(false);
-  const [singleProduced, setSingleProduced] = useState<number>(8400);
   const [runLines, setRunLines] = useState<ProductionRunLine[]>([
     { id: '1', name: 'Shift 1 (Morning)', produced: 4200 },
     { id: '2', name: 'Shift 2 (Afternoon)', produced: 4200 }
   ]);
 
-  // Sales (Default 0: Bricks produced are added to yard inventory; sales tracked in Sales & Receivables)
-  const [sold, setSold] = useState<number>(0);
-  const [salePrice, setSalePrice] = useState<number>(settings.defaultSalePrice || 4.5);
-
-  // Materials (actual used today)
-  const [cementBags, setCementBags] = useState<number>(70);
-  const [cementRate, setCementRate] = useState<number>(380);
-
-  const [dustTrucks, setDustTrucks] = useState<number>(0.85);
-  const [dustRate, setDustRate] = useState<number>(8500);
-
-  const [raakhQty, setRaakhQty] = useState<number>(3.4);
-  const [raakhRate, setRaakhRate] = useState<number>(450);
-
-  const [manualMaterialCost, setManualMaterialCost] = useState<number>(35000);
-
-  // Labor & other
-  const [workerRate, setWorkerRate] = useState<number>(settings.defaultWorkerRate || 0.60);
-  const [otherCost, setOtherCost] = useState<number>(400);
+  // Materials string states (allows clean backspacing with no stuck 0)
+  const [cementBagsStr, setCementBagsStr] = useState('70');
+  const [cementRateStr, setCementRateStr] = useState('380');
+  const [dustTrucksStr, setDustTrucksStr] = useState('0.85');
+  const [dustRateStr, setDustRateStr] = useState('8500');
+  const [raakhQtyStr, setRaakhQtyStr] = useState('3.4');
+  const [raakhRateStr, setRaakhRateStr] = useState('450');
+  const [manualMaterialCostStr, setManualMaterialCostStr] = useState('35000');
+  const [workerRateStr, setWorkerRateStr] = useState(String(settings.defaultWorkerRate || 0.60));
+  const [otherCostStr, setOtherCostStr] = useState('400');
   const [note, setNote] = useState<string>('');
   const [varianceNote, setVarianceNote] = useState<string>('');
 
+  // Numerical conversions
+  const singleProduced = Math.max(Number(singleProducedStr) || 0, 0);
+  const sold = Math.max(Number(soldStr) || 0, 0);
+  const salePrice = Number(salePriceStr) || (settings.defaultSalePrice || 4.0);
+  const cementBags = Math.max(Number(cementBagsStr) || 0, 0);
+  const cementRate = Math.max(Number(cementRateStr) || 0, 0);
+  const dustTrucks = Math.max(Number(dustTrucksStr) || 0, 0);
+  const dustRate = Math.max(Number(dustRateStr) || 0, 0);
+  const raakhQty = Math.max(Number(raakhQtyStr) || 0, 0);
+  const raakhRate = Math.max(Number(raakhRateStr) || 0, 0);
+  const manualMaterialCost = Math.max(Number(manualMaterialCostStr) || 0, 0);
+  const workerRate = Number(workerRateStr) || (settings.defaultWorkerRate || 0.60);
+  const otherCost = Math.max(Number(otherCostStr) || 0, 0);
+
   const totalProduced = isMultiRun
     ? runLines.reduce((sum, r) => sum + (Number(r.produced) || 0), 0)
-    : Number(singleProduced) || 0;
+    : singleProduced;
+
+  // Prediction uses cement as the baseline only. Dust/fly ash quantities are shown for recipe reference but do not affect this calculation.
+  const batchCement = settings.batchCementBags || 1;
+  const bricksPerBatch = settings.bricksPerBatch || settings.cementRatio || 120;
+  const predictedBricks = cementBags > 0 ? Math.round((cementBags / batchCement) * bricksPerBatch) : 0;
+
+  // Live Variance Banding:
+  // variance >= -5% && <= +5% -> Green (on target / normal)
+  // variance < -5% && >= -15% -> Amber (moderate shortfall)
+  // variance < -15%           -> Red (severe shortfall / leakage)
+  // variance > +5%            -> Amber (exceeding recipe ratio, needs reconfirming in Settings)
+  const variance = totalProduced - predictedBricks;
+  const variancePercent = predictedBricks > 0 ? (variance / predictedBricks) * 100 : 0;
+  const isVarianceGreen = variancePercent >= -5 && variancePercent <= 5;
+  const isVarianceRed = variancePercent < -15;
+  const varianceBadgeClass = isVarianceGreen ? 'badge-good' : isVarianceRed ? 'badge-bad' : 'badge-warn';
 
   const morningEst = estimateMorningTarget(
     cementBags,
@@ -80,30 +105,30 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
     entries
   );
 
-  const estimatedMatCost = (Number(cementBags) || 0) * (Number(cementRate) || 0) +
-    (Number(dustTrucks) || 0) * (Number(dustRate) || 0) +
-    (Number(raakhQty) || 0) * (Number(raakhRate) || 0);
-  const estimatedLaborCost = morningEst.recommendedTarget * (Number(workerRate) || 0.60);
+  const estimatedMatCost = (cementBags * cementRate) + (dustTrucks * dustRate) + (raakhQty * raakhRate);
+  const estimatedLaborCost = predictedBricks * workerRate;
   const estimatedTotalCost = estimatedMatCost + estimatedLaborCost;
-  const estimatedCostPerBrick = morningEst.recommendedTarget > 0 ? estimatedTotalCost / morningEst.recommendedTarget : 0;
+  const estimatedCostPerBrick = predictedBricks > 0 ? estimatedTotalCost / predictedBricks : 0;
 
+  // Note: previewEntry strictly uses actual produced (totalProduced) for all financial calculations.
+  // predictedBricks is strictly a UI reference and comparison value.
   const previewEntry: ProductionEntry = {
     id: 'preview',
     date,
     produced: totalProduced,
-    sold: Number(sold) || 0,
-    salePrice: Number(salePrice) || 4.0,
+    sold,
+    salePrice,
     costMode,
-    cementBags: Number(cementBags) || 0,
-    cementRate: Number(cementRate) || 0,
-    dustTrucks: Number(dustTrucks) || 0,
-    dustRate: Number(dustRate) || 0,
-    raakhQty: Number(raakhQty) || 0,
-    raakhRate: Number(raakhRate) || 0,
-    manualMaterialCost: Number(manualMaterialCost) || 0,
-    workerRate: Number(workerRate) || 0.60,
-    otherCost: Number(otherCost) || 0,
-    estimatedTarget: morningEst.recommendedTarget,
+    cementBags,
+    cementRate,
+    dustTrucks,
+    dustRate,
+    raakhQty,
+    raakhRate,
+    manualMaterialCost,
+    workerRate,
+    otherCost,
+    estimatedTarget: predictedBricks > 0 ? predictedBricks : morningEst.recommendedTarget,
     varianceNote,
     note,
     runLines: isMultiRun ? runLines : undefined
@@ -213,7 +238,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
             type="button"
             className="btn btn-primary btn-sm"
             onClick={() => {
-              setSingleProduced(morningEst.recommendedTarget);
+              setSingleProducedStr(String(morningEst.recommendedTarget));
               setEntryMode('closing');
             }}
             style={{ background: '#7C3AED', borderColor: '#6D28D9' }}
@@ -271,28 +296,127 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
 
               {!isMultiRun ? (
                 <div className="form-group">
-                  <label className="form-label" htmlFor="single-produced">
-                    Actual Bricks Pressed Today
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
+                    <label className="form-label" htmlFor="single-produced" style={{ marginBottom: 0 }}>
+                      Actual Bricks Pressed Today
+                    </label>
+                    {predictedBricks > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#6D28D9', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px', border: '1px solid #DDD6FE' }}>
+                          Estimated: ~{predictedBricks.toLocaleString('en-IN')} pcs
+                        </span>
+                        {!settings.isRatioConfirmed && (
+                          <span
+                            title="Go to Settings to confirm your plant's exact batch recipe"
+                            style={{
+                              fontSize: '10.5px',
+                              fontWeight: 600,
+                              color: '#B45309',
+                              background: '#FEF3C7',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              border: '1px solid #FDE68A'
+                            }}
+                          >
+                            ⚠️ Unconfirmed Ratio (Default 1:120)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <input
                     id="single-produced"
                     type="number"
-                    min="1"
+                    min="0"
+                    placeholder="0"
                     className="form-input tabular-nums"
-                    value={singleProduced}
-                    onChange={e => setSingleProduced(Number(e.target.value))}
+                    value={singleProducedStr}
+                    onChange={e => setSingleProducedStr(e.target.value)}
                     required
                   />
+
+                  {/* Live Variance Comparison Display */}
+                  {predictedBricks > 0 && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      background: isVarianceGreen ? '#F0FDF4' : isVarianceRed ? '#FEF2F2' : '#FFFBEB',
+                      border: `1px solid ${isVarianceGreen ? '#BBF7D0' : isVarianceRed ? '#FECACA' : '#FDE68A'}`,
+                      color: isVarianceGreen ? '#166534' : isVarianceRed ? '#991B1B' : '#92400E'
+                    }}>
+                      <div style={{ fontWeight: 600 }}>
+                        <span>Estimate: <strong>{predictedBricks.toLocaleString('en-IN')}</strong></span>
+                        <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
+                        <span>Actual: <strong>{totalProduced.toLocaleString('en-IN')}</strong></span>
+                        <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
+                        <span>
+                          Variance: <strong>{variance > 0 ? `+${variance.toLocaleString('en-IN')}` : variance.toLocaleString('en-IN')}</strong> ({variancePercent > 0 ? `+${variancePercent.toFixed(1)}%` : `${variancePercent.toFixed(1)}%`})
+                        </span>
+                      </div>
+                      <span className={`badge ${varianceBadgeClass}`} style={{ fontSize: '11px', fontWeight: 700 }}>
+                        {variancePercent >= -5 && variancePercent <= 5 && '✓ Normal / On Target'}
+                        {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall — check mix/waste'}
+                        {variancePercent < -15 && '🚨 Significant Shortfall — check leakage/breakage'}
+                        {variancePercent > 5 && 'ℹ Exceeding estimate — check cement count/recipe'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="form-group">
-                  <label className="form-label">Total Produced (All Batches)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>Total Produced (All Batches)</label>
+                    {predictedBricks > 0 && (
+                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#6D28D9', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px', border: '1px solid #DDD6FE' }}>
+                        Estimated: ~{predictedBricks.toLocaleString('en-IN')} pcs
+                      </span>
+                    )}
+                  </div>
                   <div
                     className="form-input tabular-nums"
                     style={{ background: '#F8FAFC', fontWeight: 800, color: '#7C3AED', display: 'flex', alignItems: 'center' }}
                   >
                     {totalProduced.toLocaleString('en-IN')} pcs
                   </div>
+
+                  {/* Multi-batch variance display */}
+                  {predictedBricks > 0 && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      background: isVarianceGreen ? '#F0FDF4' : isVarianceRed ? '#FEF2F2' : '#FFFBEB',
+                      border: `1px solid ${isVarianceGreen ? '#BBF7D0' : isVarianceRed ? '#FECACA' : '#FDE68A'}`,
+                      color: isVarianceGreen ? '#166534' : isVarianceRed ? '#991B1B' : '#92400E'
+                    }}>
+                      <div style={{ fontWeight: 600 }}>
+                        <span>Est: <strong>{predictedBricks.toLocaleString('en-IN')}</strong></span>
+                        <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
+                        <span>Act: <strong>{totalProduced.toLocaleString('en-IN')}</strong></span>
+                        <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
+                        <span>Var: <strong>{variance > 0 ? `+${variance.toLocaleString('en-IN')}` : variance.toLocaleString('en-IN')}</strong> ({variancePercent.toFixed(1)}%)</span>
+                      </div>
+                      <span className={`badge ${varianceBadgeClass}`} style={{ fontSize: '11px', fontWeight: 700 }}>
+                        {variancePercent >= -5 && variancePercent <= 5 && '✓ Normal / On Target'}
+                        {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall'}
+                        {variancePercent < -15 && '🚨 Significant Shortfall'}
+                        {variancePercent > 5 && 'ℹ Exceeding estimate'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -384,9 +508,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                       type="number"
                       step="0.5"
                       min="0"
+                      placeholder="0"
                       className="form-input tabular-nums"
-                      value={cementBags}
-                      onChange={e => setCementBags(Number(e.target.value))}
+                      value={cementBagsStr}
+                      onChange={e => setCementBagsStr(e.target.value)}
                     />
                   </div>
                   <div className="form-group">
@@ -394,9 +519,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     <input
                       type="number"
                       min="0"
+                      placeholder="0"
                       className="form-input tabular-nums"
-                      value={cementRate}
-                      onChange={e => setCementRate(Number(e.target.value))}
+                      value={cementRateStr}
+                      onChange={e => setCementRateStr(e.target.value)}
                     />
                   </div>
                   <div className="material-total-block">
@@ -415,9 +541,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                       type="number"
                       step="0.05"
                       min="0"
+                      placeholder="0"
                       className="form-input tabular-nums"
-                      value={dustTrucks}
-                      onChange={e => setDustTrucks(Number(e.target.value))}
+                      value={dustTrucksStr}
+                      onChange={e => setDustTrucksStr(e.target.value)}
                     />
                   </div>
                   <div className="form-group">
@@ -425,9 +552,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     <input
                       type="number"
                       min="0"
+                      placeholder="0"
                       className="form-input tabular-nums"
-                      value={dustRate}
-                      onChange={e => setDustRate(Number(e.target.value))}
+                      value={dustRateStr}
+                      onChange={e => setDustRateStr(e.target.value)}
                     />
                   </div>
                   <div className="material-total-block">
@@ -446,9 +574,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                       type="number"
                       step="0.1"
                       min="0"
+                      placeholder="0"
                       className="form-input tabular-nums"
-                      value={raakhQty}
-                      onChange={e => setRaakhQty(Number(e.target.value))}
+                      value={raakhQtyStr}
+                      onChange={e => setRaakhQtyStr(e.target.value)}
                     />
                   </div>
                   <div className="form-group">
@@ -456,9 +585,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     <input
                       type="number"
                       min="0"
+                      placeholder="0"
                       className="form-input tabular-nums"
-                      value={raakhRate}
-                      onChange={e => setRaakhRate(Number(e.target.value))}
+                      value={raakhRateStr}
+                      onChange={e => setRaakhRateStr(e.target.value)}
                     />
                   </div>
                   <div className="material-total-block">
@@ -508,7 +638,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                         type="button"
                         className="btn btn-secondary btn-sm"
                         onClick={() => {
-                          setSingleProduced(morningEst.recommendedTarget);
+                          setSingleProducedStr(String(morningEst.recommendedTarget));
                         }}
                         style={{ fontSize: '11px', padding: '5px 10px', background: '#FFFFFF', borderColor: '#C4B5FD', color: '#6D28D9', fontWeight: 600 }}
                         title="Copy estimated count to Step 1 actual pressed count"
@@ -528,10 +658,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   id="manual-material-cost"
                   type="number"
                   min="0"
+                  placeholder="0"
                   className="form-input tabular-nums"
-                  value={manualMaterialCost}
-                  onChange={e => setManualMaterialCost(Number(e.target.value))}
-                  placeholder="Total ₹ spent on materials today"
+                  value={manualMaterialCostStr}
+                  onChange={e => setManualMaterialCostStr(e.target.value)}
                 />
               </div>
             )}
@@ -557,9 +687,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   id="worker-rate"
                   type="number"
                   step="0.05"
+                  placeholder="0"
                   className="form-input tabular-nums"
-                  value={workerRate}
-                  onChange={e => setWorkerRate(Number(e.target.value))}
+                  value={workerRateStr}
+                  onChange={e => setWorkerRateStr(e.target.value)}
                 />
                 <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 500 }}>
                   Labor bill: ₹{(totalProduced * workerRate).toLocaleString('en-IN')}
@@ -574,10 +705,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   id="other-cost"
                   type="number"
                   min="0"
+                  placeholder="0"
                   className="form-input tabular-nums"
-                  value={otherCost}
-                  onChange={e => setOtherCost(Number(e.target.value))}
-                  placeholder="e.g. 400"
+                  value={otherCostStr}
+                  onChange={e => setOtherCostStr(e.target.value)}
                 />
               </div>
 
@@ -589,10 +720,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   id="sold-count"
                   type="number"
                   min="0"
-                  className="form-input tabular-nums"
-                  value={sold}
-                  onChange={e => setSold(Number(e.target.value))}
                   placeholder="0"
+                  className="form-input tabular-nums"
+                  value={soldStr}
+                  onChange={e => setSoldStr(e.target.value)}
                 />
                 <span style={{ fontSize: '11px', color: '#64748B' }}>
                   Agar factory press se direct gaadi load hui ho. (Aamtaur par 0, bikri Sales tab me hoti hai).
@@ -608,9 +739,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   type="number"
                   step="0.1"
                   min="0"
+                  placeholder="0"
                   className="form-input tabular-nums"
-                  value={salePrice}
-                  onChange={e => setSalePrice(Number(e.target.value))}
+                  value={salePriceStr}
+                  onChange={e => setSalePriceStr(e.target.value)}
                 />
                 <span style={{ fontSize: '11px', color: '#64748B' }}>
                   Margin compare karne ke liye selling rate (e.g. ₹4.50 ya ₹5.00)

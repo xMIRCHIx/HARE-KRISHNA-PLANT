@@ -109,6 +109,12 @@ export interface Settings {
   unitRaakhLabel: string; // "Tons" or "Bori" or "Kg"
   unitDustLabel: string; // "Trucks (800-900 cft)" or "CFT"
   allowUdhaarCredit: boolean; // udhaar / credit tracking toggle
+  // Batch-based Prediction settings
+  batchCementBags?: number; // cement bags per standard mixer batch (default: 1)
+  batchDustQty?: number; // dust quantity per batch (display/reference only)
+  batchFlyAshQty?: number; // fly ash quantity per batch (display/reference only)
+  bricksPerBatch?: number; // bricks produced by one standard batch (default: 120)
+  isRatioConfirmed?: boolean; // false until admin confirms actual ratio in Settings
 }
 
 export interface CalculationResult {

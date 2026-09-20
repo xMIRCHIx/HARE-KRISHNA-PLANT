@@ -22,7 +22,12 @@ export const DEFAULT_SETTINGS: Settings = {
   openingStockDate: new Date().toISOString().split('T')[0],
   unitRaakhLabel: 'Tons',
   unitDustLabel: 'Trucks (800-900 CFT)',
-  allowUdhaarCredit: true
+  allowUdhaarCredit: true,
+  batchCementBags: 1,
+  batchDustQty: 0.01,
+  batchFlyAshQty: 0.04,
+  bricksPerBatch: 120,
+  isRatioConfirmed: false
 };
 
 // Clean initial state (no fake dummy data)
