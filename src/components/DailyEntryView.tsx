@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Save,
   Calculator,
@@ -85,6 +85,14 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
   const batchCement = settings.batchCementBags || 1;
   const bricksPerBatch = settings.bricksPerBatch || settings.cementRatio || 120;
   const predictedBricks = cementBags > 0 ? Math.round((cementBags / batchCement) * bricksPerBatch) : 0;
+
+  // In Morning Planner mode, auto-fill production from cement-based prediction.
+  // This makes the planner "enter materials → see production" instead of manual entry.
+  useEffect(() => {
+    if (entryMode === 'planning' && predictedBricks > 0) {
+      setSingleProducedStr(String(predictedBricks));
+    }
+  }, [entryMode, predictedBricks]);
 
   // Live Variance Banding:
   // variance >= -5% && <= +5% -> Green (on target / normal)
@@ -210,265 +218,256 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
         </div>
       </div>
 
-      {entryMode === 'planning' && (
-        <div style={{
-          padding: '16px 20px',
-          background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
-          borderRadius: '12px',
-          border: '1.5px solid #C4B5FD',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '14px'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={18} color="#7C3AED" />
-              <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#5B21B6' }}>
-                सुबहा का बैच प्लानर (Pre-Shift Batch Estimator)
-              </h3>
-            </div>
-            <p style={{ fontSize: '12.5px', color: '#6D28D9', marginTop: '4px', maxWidth: '650px', lineHeight: 1.5 }}>
-              Subah machine chalane se pehle Step 2 me Cement, Dust aur Raakh quantity daalein.
-              Software turant bata dega ki is maal se <strong>approx ~{morningEst.recommendedTarget.toLocaleString('en-IN')} eent</strong> banni chahiye (@ <strong>₹{estimatedCostPerBrick.toFixed(2)}/eent</strong>)!
-            </p>
-          </div>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={() => {
-              setSingleProducedStr(String(morningEst.recommendedTarget));
-              setEntryMode('closing');
-            }}
-            style={{ background: '#7C3AED', borderColor: '#6D28D9' }}
-          >
-            Set ~{morningEst.recommendedTarget.toLocaleString('en-IN')} pcs as Today's Target
-          </button>
-        </div>
-      )}
-
       <form onSubmit={handleSave} className="entry-form-grid">
         {/* Left Column: Form Fields */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {/* Card 1: Date & Count */}
-          <div className="hkb-card" style={{ padding: '22px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px' }}>
-                  STEP 1
-                </span>
-                <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
-                  Production Date & Quantity Count
-                </h3>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              MORNING PLANNER MODE — Materials first, auto-predicted output
+             ═══════════════════════════════════════════════════════════════ */}
+          {entryMode === 'planning' && (
+            <>
+              {/* Date Card (compact) */}
+              <div className="hkb-card" style={{ padding: '16px 22px' }}>
+                <div className="responsive-form-duo">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="entry-date">Date of Production</label>
+                    <input
+                      id="entry-date"
+                      type="date"
+                      className="form-input"
+                      value={date}
+                      onChange={e => setDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════
+              EVENING CLOSING MODE — Manual production entry first
+             ═══════════════════════════════════════════════════════════════ */}
+          {entryMode === 'closing' && (
+            <div className="hkb-card" style={{ padding: '22px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px' }}>
+                    STEP 1
+                  </span>
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
+                    Production Date & Actual Count
+                  </h3>
+                </div>
+
+                <div className="segmented-control">
+                  <button
+                    type="button"
+                    className={`segmented-btn ${!isMultiRun ? 'active' : ''}`}
+                    onClick={() => setIsMultiRun(false)}
+                  >
+                    Single Shift
+                  </button>
+                  <button
+                    type="button"
+                    className={`segmented-btn ${isMultiRun ? 'active' : ''}`}
+                    onClick={() => setIsMultiRun(true)}
+                  >
+                    Multi-Batch
+                  </button>
+                </div>
               </div>
 
-              <div className="segmented-control">
-                <button
-                  type="button"
-                  className={`segmented-btn ${!isMultiRun ? 'active' : ''}`}
-                  onClick={() => setIsMultiRun(false)}
-                >
-                  Single Shift
-                </button>
-                <button
-                  type="button"
-                  className={`segmented-btn ${isMultiRun ? 'active' : ''}`}
-                  onClick={() => setIsMultiRun(true)}
-                >
-                  Multi-Batch
-                </button>
-              </div>
-            </div>
-
-            <div className="responsive-form-duo">
-              <div className="form-group">
-                <label className="form-label" htmlFor="entry-date">Date of Production</label>
-                <input
-                  id="entry-date"
-                  type="date"
-                  className="form-input"
-                  value={date}
-                  onChange={e => setDate(e.target.value)}
-                  required
-                />
-              </div>
-
-              {!isMultiRun ? (
+              <div className="responsive-form-duo">
                 <div className="form-group">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
-                    <label className="form-label" htmlFor="single-produced" style={{ marginBottom: 0 }}>
-                      Actual Bricks Pressed Today
-                    </label>
+                  <label className="form-label" htmlFor="entry-date">Date of Production</label>
+                  <input
+                    id="entry-date"
+                    type="date"
+                    className="form-input"
+                    value={date}
+                    onChange={e => setDate(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {!isMultiRun ? (
+                  <div className="form-group">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
+                      <label className="form-label" htmlFor="single-produced" style={{ marginBottom: 0 }}>
+                        Actual Bricks Pressed Today
+                      </label>
+                      {predictedBricks > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#6D28D9', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px', border: '1px solid #DDD6FE' }}>
+                            Estimated: ~{predictedBricks.toLocaleString('en-IN')} pcs
+                          </span>
+                          {!settings.isRatioConfirmed && (
+                            <span
+                              title="Go to Settings to confirm your plant's exact batch recipe"
+                              style={{
+                                fontSize: '10.5px',
+                                fontWeight: 600,
+                                color: '#B45309',
+                                background: '#FEF3C7',
+                                padding: '2px 7px',
+                                borderRadius: '4px',
+                                border: '1px solid #FDE68A'
+                              }}
+                            >
+                              ⚠️ Unconfirmed Ratio (Default 1:120)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      id="single-produced"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      className="form-input tabular-nums"
+                      value={singleProducedStr}
+                      onChange={e => setSingleProducedStr(e.target.value)}
+                      required
+                    />
+
+                    {/* Live Variance Comparison Display */}
                     {predictedBricks > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        background: isVarianceGreen ? '#F0FDF4' : isVarianceRed ? '#FEF2F2' : '#FFFBEB',
+                        border: `1px solid ${isVarianceGreen ? '#BBF7D0' : isVarianceRed ? '#FECACA' : '#FDE68A'}`,
+                        color: isVarianceGreen ? '#166534' : isVarianceRed ? '#991B1B' : '#92400E'
+                      }}>
+                        <div style={{ fontWeight: 600 }}>
+                          <span>Estimate: <strong>{predictedBricks.toLocaleString('en-IN')}</strong></span>
+                          <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
+                          <span>Actual: <strong>{totalProduced.toLocaleString('en-IN')}</strong></span>
+                          <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
+                          <span>
+                            Variance: <strong>{variance > 0 ? `+${variance.toLocaleString('en-IN')}` : variance.toLocaleString('en-IN')}</strong> ({variancePercent > 0 ? `+${variancePercent.toFixed(1)}%` : `${variancePercent.toFixed(1)}%`})
+                          </span>
+                        </div>
+                        <span className={`badge ${varianceBadgeClass}`} style={{ fontSize: '11px', fontWeight: 700 }}>
+                          {variancePercent >= -5 && variancePercent <= 5 && '✓ Normal / On Target'}
+                          {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall — check mix/waste'}
+                          {variancePercent < -15 && '🚨 Significant Shortfall — check leakage/breakage'}
+                          {variancePercent > 5 && 'ℹ Exceeding estimate — check cement count/recipe'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
+                      <label className="form-label" style={{ marginBottom: 0 }}>Total Produced (All Batches)</label>
+                      {predictedBricks > 0 && (
                         <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#6D28D9', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px', border: '1px solid #DDD6FE' }}>
                           Estimated: ~{predictedBricks.toLocaleString('en-IN')} pcs
                         </span>
-                        {!settings.isRatioConfirmed && (
-                          <span
-                            title="Go to Settings to confirm your plant's exact batch recipe"
-                            style={{
-                              fontSize: '10.5px',
-                              fontWeight: 600,
-                              color: '#B45309',
-                              background: '#FEF3C7',
-                              padding: '2px 7px',
-                              borderRadius: '4px',
-                              border: '1px solid #FDE68A'
-                            }}
-                          >
-                            ⚠️ Unconfirmed Ratio (Default 1:120)
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    id="single-produced"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    className="form-input tabular-nums"
-                    value={singleProducedStr}
-                    onChange={e => setSingleProducedStr(e.target.value)}
-                    required
-                  />
+                      )}
+                    </div>
+                    <div
+                      className="form-input tabular-nums"
+                      style={{ background: '#F8FAFC', fontWeight: 800, color: '#7C3AED', display: 'flex', alignItems: 'center' }}
+                    >
+                      {totalProduced.toLocaleString('en-IN')} pcs
+                    </div>
 
-                  {/* Live Variance Comparison Display */}
-                  {predictedBricks > 0 && (
-                    <div style={{
-                      marginTop: '8px',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '8px',
-                      background: isVarianceGreen ? '#F0FDF4' : isVarianceRed ? '#FEF2F2' : '#FFFBEB',
-                      border: `1px solid ${isVarianceGreen ? '#BBF7D0' : isVarianceRed ? '#FECACA' : '#FDE68A'}`,
-                      color: isVarianceGreen ? '#166534' : isVarianceRed ? '#991B1B' : '#92400E'
-                    }}>
-                      <div style={{ fontWeight: 600 }}>
-                        <span>Estimate: <strong>{predictedBricks.toLocaleString('en-IN')}</strong></span>
-                        <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
-                        <span>Actual: <strong>{totalProduced.toLocaleString('en-IN')}</strong></span>
-                        <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
-                        <span>
-                          Variance: <strong>{variance > 0 ? `+${variance.toLocaleString('en-IN')}` : variance.toLocaleString('en-IN')}</strong> ({variancePercent > 0 ? `+${variancePercent.toFixed(1)}%` : `${variancePercent.toFixed(1)}%`})
+                    {/* Multi-batch variance display */}
+                    {predictedBricks > 0 && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        background: isVarianceGreen ? '#F0FDF4' : isVarianceRed ? '#FEF2F2' : '#FFFBEB',
+                        border: `1px solid ${isVarianceGreen ? '#BBF7D0' : isVarianceRed ? '#FECACA' : '#FDE68A'}`,
+                        color: isVarianceGreen ? '#166534' : isVarianceRed ? '#991B1B' : '#92400E'
+                      }}>
+                        <div style={{ fontWeight: 600 }}>
+                          <span>Est: <strong>{predictedBricks.toLocaleString('en-IN')}</strong></span>
+                          <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
+                          <span>Act: <strong>{totalProduced.toLocaleString('en-IN')}</strong></span>
+                          <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
+                          <span>Var: <strong>{variance > 0 ? `+${variance.toLocaleString('en-IN')}` : variance.toLocaleString('en-IN')}</strong> ({variancePercent.toFixed(1)}%)</span>
+                        </div>
+                        <span className={`badge ${varianceBadgeClass}`} style={{ fontSize: '11px', fontWeight: 700 }}>
+                          {variancePercent >= -5 && variancePercent <= 5 && '✓ Normal / On Target'}
+                          {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall'}
+                          {variancePercent < -15 && '🚨 Significant Shortfall'}
+                          {variancePercent > 5 && 'ℹ Exceeding estimate'}
                         </span>
                       </div>
-                      <span className={`badge ${varianceBadgeClass}`} style={{ fontSize: '11px', fontWeight: 700 }}>
-                        {variancePercent >= -5 && variancePercent <= 5 && '✓ Normal / On Target'}
-                        {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall — check mix/waste'}
-                        {variancePercent < -15 && '🚨 Significant Shortfall — check leakage/breakage'}
-                        {variancePercent > 5 && 'ℹ Exceeding estimate — check cement count/recipe'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="form-group">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
-                    <label className="form-label" style={{ marginBottom: 0 }}>Total Produced (All Batches)</label>
-                    {predictedBricks > 0 && (
-                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#6D28D9', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px', border: '1px solid #DDD6FE' }}>
-                        Estimated: ~{predictedBricks.toLocaleString('en-IN')} pcs
-                      </span>
                     )}
                   </div>
-                  <div
-                    className="form-input tabular-nums"
-                    style={{ background: '#F8FAFC', fontWeight: 800, color: '#7C3AED', display: 'flex', alignItems: 'center' }}
-                  >
-                    {totalProduced.toLocaleString('en-IN')} pcs
+                )}
+              </div>
+
+              {/* Multi-run line items */}
+              {isMultiRun && (
+                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', fontWeight: 600 }}>
+                    <span style={{ color: '#475569' }}>Shift Lines</span>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddRunLine} style={{ padding: '3px 8px', fontSize: '11px' }}>
+                      <Plus size={12} />
+                      <span>Add Shift Line</span>
+                    </button>
                   </div>
 
-                  {/* Multi-batch variance display */}
-                  {predictedBricks > 0 && (
-                    <div style={{
-                      marginTop: '8px',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '8px',
-                      background: isVarianceGreen ? '#F0FDF4' : isVarianceRed ? '#FEF2F2' : '#FFFBEB',
-                      border: `1px solid ${isVarianceGreen ? '#BBF7D0' : isVarianceRed ? '#FECACA' : '#FDE68A'}`,
-                      color: isVarianceGreen ? '#166534' : isVarianceRed ? '#991B1B' : '#92400E'
-                    }}>
-                      <div style={{ fontWeight: 600 }}>
-                        <span>Est: <strong>{predictedBricks.toLocaleString('en-IN')}</strong></span>
-                        <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
-                        <span>Act: <strong>{totalProduced.toLocaleString('en-IN')}</strong></span>
-                        <span style={{ margin: '0 6px', opacity: 0.5 }}>|</span>
-                        <span>Var: <strong>{variance > 0 ? `+${variance.toLocaleString('en-IN')}` : variance.toLocaleString('en-IN')}</strong> ({variancePercent.toFixed(1)}%)</span>
-                      </div>
-                      <span className={`badge ${varianceBadgeClass}`} style={{ fontSize: '11px', fontWeight: 700 }}>
-                        {variancePercent >= -5 && variancePercent <= 5 && '✓ Normal / On Target'}
-                        {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall'}
-                        {variancePercent < -15 && '🚨 Significant Shortfall'}
-                        {variancePercent > 5 && 'ℹ Exceeding estimate'}
-                      </span>
+                  {runLines.map((line, idx) => (
+                    <div key={line.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr auto', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={line.name}
+                        placeholder={`Shift ${idx + 1}`}
+                        onChange={e => handleUpdateRunLine(line.id, 'name', e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        className="form-input tabular-nums"
+                        value={line.produced}
+                        placeholder="Count"
+                        onChange={e => handleUpdateRunLine(line.id, 'produced', Number(e.target.value))}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleRemoveRunLine(line.id)}
+                        disabled={runLines.length <= 1}
+                        style={{ color: '#EF4444', padding: '6px 8px' }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
+          )}
 
-            {/* Multi-run line items */}
-            {isMultiRun && (
-              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', fontWeight: 600 }}>
-                  <span style={{ color: '#475569' }}>Shift Lines</span>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddRunLine} style={{ padding: '3px 8px', fontSize: '11px' }}>
-                    <Plus size={12} />
-                    <span>Add Shift Line</span>
-                  </button>
-                </div>
-
-                {runLines.map((line, idx) => (
-                  <div key={line.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr auto', gap: '8px', alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={line.name}
-                      placeholder={`Shift ${idx + 1}`}
-                      onChange={e => handleUpdateRunLine(line.id, 'name', e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      className="form-input tabular-nums"
-                      value={line.produced}
-                      placeholder="Count"
-                      onChange={e => handleUpdateRunLine(line.id, 'produced', Number(e.target.value))}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => handleRemoveRunLine(line.id)}
-                      disabled={runLines.length <= 1}
-                      style={{ color: '#EF4444', padding: '6px 8px' }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Card 2: Actual Raw Materials (Clean 3-column layout) */}
+          {/* Card 2: Raw Materials — In planning mode this is STEP 1, in closing STEP 2 */}
           <div className="hkb-card" style={{ padding: '22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px' }}>
-                  STEP 2
+                  {entryMode === 'planning' ? 'STEP 1' : 'STEP 2'}
                 </span>
                 <div>
                   <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
@@ -599,55 +598,6 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   </div>
                 </div>
 
-                {/* Pre-Shift Expected Output & Cost Banner */}
-                {costMode === 'ratio' && morningEst.recommendedTarget > 0 && (
-                  <div style={{
-                    padding: '14px 16px',
-                    background: '#F5F3FF',
-                    borderRadius: '10px',
-                    border: '1.5px solid #DDD6FE',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '12px',
-                    marginTop: '8px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#7C3AED', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Sparkles size={18} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 800, color: '#5B21B6' }}>
-                          सुबहा का अंदाज़ा (Pre-Shift Production & Cost Estimate)
-                        </div>
-                        <div style={{ fontSize: '11.5px', color: '#6D28D9', marginTop: '2px' }}>
-                          In raw materials se approx <strong>{morningEst.recommendedTarget.toLocaleString('en-IN')} eent</strong> banni chahiye (@ <strong>₹{estimatedCostPerBrick.toFixed(2)}/brick</strong> est. cost)
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#6D28D9', textTransform: 'uppercase' }}>Est. Total (Maal + Labor)</div>
-                        <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: '#4C1D95' }}>
-                          ₹{Math.round(estimatedTotalCost).toLocaleString('en-IN')}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => {
-                          setSingleProducedStr(String(morningEst.recommendedTarget));
-                        }}
-                        style={{ fontSize: '11px', padding: '5px 10px', background: '#FFFFFF', borderColor: '#C4B5FD', color: '#6D28D9', fontWeight: 600 }}
-                        title="Copy estimated count to Step 1 actual pressed count"
-                      >
-                        Use as Shift Count
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="form-group">
@@ -667,11 +617,99 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
             )}
           </div>
 
+          {/* ═══════════════════════════════════════════════════════════════
+              MORNING PLANNER: Auto-Predicted Production Result Card (STEP 2)
+              Shows AFTER materials — no manual input needed, auto-calculated
+             ═══════════════════════════════════════════════════════════════ */}
+          {entryMode === 'planning' && (
+            <div className="hkb-card" style={{
+              padding: '24px',
+              background: predictedBricks > 0
+                ? 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)'
+                : '#F8FAFC',
+              border: predictedBricks > 0 ? '1.5px solid #86EFAC' : '1.5px solid #E2E8F0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px' }}>
+                  STEP 2
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={18} color="#059669" />
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
+                    Predicted Production Output
+                  </h3>
+                </div>
+                {!settings.isRatioConfirmed && (
+                  <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', padding: '2px 7px', borderRadius: '4px', border: '1px solid #FDE68A' }}>
+                    ⚠️ Default Ratio — Confirm in Settings
+                  </span>
+                )}
+              </div>
+
+              {predictedBricks > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      Itne Maal Se Itni Eent Banegi
+                    </div>
+                    <div className="tabular-nums" style={{ fontSize: '36px', fontWeight: 900, color: '#059669', lineHeight: 1 }}>
+                      ~{predictedBricks.toLocaleString('en-IN')}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#065F46', fontWeight: 600, marginTop: '4px' }}>
+                      bricks ({cementBags} bags × {bricksPerBatch} per batch)
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#6D28D9', textTransform: 'uppercase' }}>Material Cost</div>
+                      <div className="tabular-nums" style={{ fontSize: '18px', fontWeight: 800, color: '#4C1D95' }}>
+                        ₹{Math.round(estimatedMatCost).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#6D28D9', textTransform: 'uppercase' }}>+ Labor</div>
+                      <div className="tabular-nums" style={{ fontSize: '18px', fontWeight: 800, color: '#4C1D95' }}>
+                        ₹{Math.round(estimatedLaborCost).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#059669', textTransform: 'uppercase' }}>Est. Cost/Brick</div>
+                      <div className="tabular-nums" style={{ fontSize: '18px', fontWeight: 800, color: '#047857' }}>
+                        ₹{estimatedCostPerBrick.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94A3B8', fontSize: '14px' }}>
+                  ↑ Upar Step 1 me Cement Bags daalein — production auto-calculate hoga
+                </div>
+              )}
+
+              {predictedBricks > 0 && (
+                <div style={{ marginTop: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      setSingleProducedStr(String(predictedBricks));
+                      setEntryMode('closing');
+                    }}
+                    style={{ background: '#059669', borderColor: '#047857' }}
+                  >
+                    ✓ Set ~{predictedBricks.toLocaleString('en-IN')} as Today's Target & Switch to Evening Log
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Card 3: Labor Payoff & Sales */}
           <div className="hkb-card" style={{ padding: '22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '6px' }}>
-                STEP 3
+                {entryMode === 'planning' ? 'STEP 3' : 'STEP 3'}
               </span>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
                 Labor Payoff, Extra Expenses & Dispatches
