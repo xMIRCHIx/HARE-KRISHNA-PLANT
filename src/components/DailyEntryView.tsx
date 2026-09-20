@@ -36,17 +36,19 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
   const [date, setDate] = useState(today);
   const [costMode, setCostMode] = useState<CostMode>('ratio');
 
+  const [entryMode, setEntryMode] = useState<'closing' | 'planning'>('closing');
+
   // Multi-run lines or single count
   const [isMultiRun, setIsMultiRun] = useState(false);
-  const [singleProduced, setSingleProduced] = useState<number>(8500);
+  const [singleProduced, setSingleProduced] = useState<number>(8400);
   const [runLines, setRunLines] = useState<ProductionRunLine[]>([
-    { id: '1', name: 'Shift 1 (Morning)', produced: 4500 },
-    { id: '2', name: 'Shift 2 (Afternoon)', produced: 4000 }
+    { id: '1', name: 'Shift 1 (Morning)', produced: 4200 },
+    { id: '2', name: 'Shift 2 (Afternoon)', produced: 4200 }
   ]);
 
-  // Sales
-  const [sold, setSold] = useState<number>(5000);
-  const [salePrice, setSalePrice] = useState<number>(settings.defaultSalePrice || 4.0);
+  // Sales (Default 0: Bricks produced are added to yard inventory; sales tracked in Sales & Receivables)
+  const [sold, setSold] = useState<number>(0);
+  const [salePrice, setSalePrice] = useState<number>(settings.defaultSalePrice || 4.5);
 
   // Materials (actual used today)
   const [cementBags, setCementBags] = useState<number>(70);
@@ -152,15 +154,74 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
             Daily Production & Costing Entry
           </h2>
           <p style={{ fontSize: '13px', color: '#64748B', marginTop: '2px', fontWeight: 500 }}>
-            Input actual materials consumed, machines stroke counts, and daily sales.
+            {entryMode === 'planning'
+              ? '🌅 Morning Planner: Raw materials daalkar dekhein kitni eent banegi aur kitna kharcha aayega.'
+              : '🌇 Evening Shift Closing: Machine counter se actual output daalein aur Ledger me save karein.'}
           </p>
         </div>
 
-        <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>
-          <ArrowLeft size={14} />
-          <span>Back to Dashboard</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div className="segmented-control">
+            <button
+              type="button"
+              className={`segmented-btn ${entryMode === 'planning' ? 'active' : ''}`}
+              onClick={() => setEntryMode('planning')}
+            >
+              🌅 Morning Planner (सुबहा का अंदाज़ा)
+            </button>
+            <button
+              type="button"
+              className={`segmented-btn ${entryMode === 'closing' ? 'active' : ''}`}
+              onClick={() => setEntryMode('closing')}
+            >
+              🌇 Evening Shift Log (शाम का हिसाब)
+            </button>
+          </div>
+
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>
+            <ArrowLeft size={14} />
+            <span>Back to Dashboard</span>
+          </button>
+        </div>
       </div>
+
+      {entryMode === 'planning' && (
+        <div style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
+          borderRadius: '12px',
+          border: '1.5px solid #C4B5FD',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '14px'
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Sparkles size={18} color="#7C3AED" />
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#5B21B6' }}>
+                सुबहा का बैच प्लानर (Pre-Shift Batch Estimator)
+              </h3>
+            </div>
+            <p style={{ fontSize: '12.5px', color: '#6D28D9', marginTop: '4px', maxWidth: '650px', lineHeight: 1.5 }}>
+              Subah machine chalane se pehle Step 2 me Cement, Dust aur Raakh quantity daalein.
+              Software turant bata dega ki is maal se <strong>approx ~{morningEst.recommendedTarget.toLocaleString('en-IN')} eent</strong> banni chahiye (@ <strong>₹{estimatedCostPerBrick.toFixed(2)}/eent</strong>)!
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => {
+              setSingleProduced(morningEst.recommendedTarget);
+              setEntryMode('closing');
+            }}
+            style={{ background: '#7C3AED', borderColor: '#6D28D9' }}
+          >
+            Set ~{morningEst.recommendedTarget.toLocaleString('en-IN')} pcs as Today's Target
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSave} className="entry-form-grid">
         {/* Left Column: Form Fields */}
@@ -522,7 +583,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
 
               <div className="form-group">
                 <label className="form-label" htmlFor="sold-count">
-                  Bricks Sold / Dispatched Today
+                  Direct Yard Dispatches Today (Optional)
                 </label>
                 <input
                   id="sold-count"
@@ -531,12 +592,16 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   className="form-input tabular-nums"
                   value={sold}
                   onChange={e => setSold(Number(e.target.value))}
+                  placeholder="0"
                 />
+                <span style={{ fontSize: '11px', color: '#64748B' }}>
+                  Agar factory press se direct gaadi load hui ho. (Aamtaur par 0, bikri Sales tab me hoti hai).
+                </span>
               </div>
 
               <div className="form-group">
                 <label className="form-label" htmlFor="sale-price">
-                  Selling Rate (₹ / brick)
+                  Benchmark Selling Rate (₹ / brick)
                 </label>
                 <input
                   id="sale-price"
@@ -547,6 +612,9 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   value={salePrice}
                   onChange={e => setSalePrice(Number(e.target.value))}
                 />
+                <span style={{ fontSize: '11px', color: '#64748B' }}>
+                  Margin compare karne ke liye selling rate (e.g. ₹4.50 ya ₹5.00)
+                </span>
               </div>
             </div>
 
@@ -591,13 +659,13 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: liveCalc.isLoss ? '#FEE2E2' : '#F5F3FF', color: liveCalc.isLoss ? '#DC2626' : '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: liveCalc.profitPerBrick >= 0 ? '#F5F3FF' : '#FEE2E2', color: liveCalc.profitPerBrick >= 0 ? '#7C3AED' : '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Calculator size={17} />
                 </div>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>Live Dynamic Costing</h3>
               </div>
-              <span className={`badge ${liveCalc.isLoss ? 'badge-bad' : 'badge-good'}`}>
-                {liveCalc.isLoss ? 'LOSS ALERT' : 'PROFITABLE'}
+              <span className={`badge ${liveCalc.profitPerBrick >= 0 ? 'badge-good' : 'badge-bad'}`}>
+                {liveCalc.profitPerBrick >= 0 ? 'PROFITABLE MARGIN' : 'HIGH PRODUCTION COST'}
               </span>
             </div>
 
@@ -621,7 +689,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   style={{
                     fontSize: '34px',
                     fontWeight: 800,
-                    color: liveCalc.isLoss ? '#DC2626' : '#0F172A',
+                    color: liveCalc.profitPerBrick >= 0 ? '#0F172A' : '#DC2626',
                     letterSpacing: '-0.02em'
                   }}
                 >
@@ -630,13 +698,13 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                 <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>/ brick</span>
               </div>
               <div style={{ fontSize: '12px', marginTop: '6px', color: '#475569', fontWeight: 500 }}>
-                Target Cost: <strong>~₹3.50</strong> | Selling Rate: <strong>₹{Number(salePrice).toFixed(2)}</strong>
+                Benchmark Sale Rate: <strong>₹{Number(salePrice).toFixed(2)}</strong>
               </div>
             </div>
 
             {/* Profit Margin */}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #E2E8F0', fontSize: '13px' }}>
-              <span style={{ color: '#475569', fontWeight: 500 }}>Profit Margin / Brick:</span>
+              <span style={{ color: '#475569', fontWeight: 500 }}>Expected Unit Margin:</span>
               <span className="tabular-nums" style={{ fontWeight: 800, color: liveCalc.profitPerBrick >= 0 ? '#059669' : '#DC2626' }}>
                 {liveCalc.profitPerBrick >= 0 ? '+' : ''}₹{liveCalc.profitPerBrick.toFixed(2)} ({liveCalc.marginPercent.toFixed(1)}%)
               </span>
@@ -666,20 +734,34 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
 
             {/* Sales realization */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 0', borderBottom: '1px solid #E2E8F0', fontSize: '12.5px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748B' }}>Sales Revenue ({sold} sold):</span>
-                <span className="tabular-nums" style={{ fontWeight: 700, color: '#059669' }}>₹{liveCalc.revenue.toLocaleString('en-IN')}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748B' }}>Net Realized Profit:</span>
-                <span className="tabular-nums" style={{ fontWeight: 800, color: liveCalc.profit >= 0 ? '#059669' : '#DC2626' }}>
-                  ₹{Math.round(liveCalc.profit).toLocaleString('en-IN')}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748B' }}>Yard Stock Change:</span>
-                <span className="tabular-nums" style={{ fontWeight: 700 }}>
-                  {liveCalc.stockDelta >= 0 ? `+${liveCalc.stockDelta}` : liveCalc.stockDelta} pcs
+              {sold > 0 ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748B' }}>Direct Dispatches ({sold} sold):</span>
+                    <span className="tabular-nums" style={{ fontWeight: 700, color: '#059669' }}>₹{liveCalc.revenue.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748B' }}>Net Realized Profit:</span>
+                    <span className="tabular-nums" style={{ fontWeight: 800, color: liveCalc.profit >= 0 ? '#059669' : '#DC2626' }}>
+                      ₹{Math.round(liveCalc.profit).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ padding: '8px 10px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0F172A', fontWeight: 600 }}>
+                    <span>Shift Production:</span>
+                    <span className="tabular-nums">{totalProduced.toLocaleString('en-IN')} pcs</span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                    All bricks added to Yard Stock. Sales are billed in 'Sales & Receivables'.
+                  </div>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '2px' }}>
+                <span style={{ color: '#64748B' }}>Yard Stock Addition:</span>
+                <span className="tabular-nums" style={{ fontWeight: 700, color: '#059669' }}>
+                  +{liveCalc.stockDelta.toLocaleString('en-IN')} pcs
                 </span>
               </div>
             </div>
