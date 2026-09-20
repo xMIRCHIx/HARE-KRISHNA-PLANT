@@ -97,24 +97,24 @@ export interface Expense {
 
 export interface Settings {
   productionEstimateMode: ProductionEstimateMode; // 'fixed' | 'auto'
-  cementRatio: number; // bricks per cement bag (e.g. 120)
-  dustRatio: number; // bricks per dust ton (e.g. 600)
-  raakhRatio: number; // bricks per raakh/fly ash ton (e.g. 2500)
+  cementRatio: number; // bricks per cement bag (e.g. 120) - unconfirmed placeholder default
+  dustRatio: number; // bricks per dust truck (e.g. 10000) - unconfirmed placeholder default
+  raakhRatio: number; // bricks per raakh unit (e.g. 2500) - unconfirmed placeholder default
   defaultWorkerRate: number; // default 0.60
   defaultSalePrice: number; // default 4.00
   overheadSplitMode: OverheadSplitMode; // 'split' | 'separate'
   adminPassword: string; // default "hkb@2026"
   openingStock: number; // yard opening stock count
   openingStockDate: string;
-  unitRaakhLabel: string; // "Tons" or "Kg"
-  unitDustLabel: string; // "Tons" or "CFT" or "Trucks"
+  unitRaakhLabel: string; // "Trucks" or "Trolley" or "Kg" or "Bori"
+  unitDustLabel: string; // "Trucks (800-900 CFT)" or "Trolley"
   allowUdhaarCredit: boolean; // udhaar / credit tracking toggle
   // Batch-based Prediction settings
   batchCementBags?: number; // cement bags per standard mixer batch (default: 1)
   batchDustQty?: number; // dust quantity per batch (display/reference only)
   batchFlyAshQty?: number; // fly ash quantity per batch (display/reference only)
   bricksPerBatch?: number; // bricks produced by one standard batch (default: 120)
-  isRatioConfirmed?: boolean; // false until admin confirms actual ratio in Settings
+  isRatioConfirmed?: boolean; // false until admin manually confirms actual plant-verified ratio in Settings
 }
 
 export interface CalculationResult {

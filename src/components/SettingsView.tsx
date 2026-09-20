@@ -77,13 +77,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const isConfirmed = Boolean(formData.isRatioConfirmed);
     const updated: Settings = {
       ...formData,
-      isRatioConfirmed: true // Confirmed by admin saving settings
+      isRatioConfirmed: isConfirmed
     };
     setFormData(updated);
     onSaveSettings(updated);
-    setSaveMessage('Settings saved successfully! Recipe confirmed.');
+    setSaveMessage(isConfirmed ? 'Settings saved successfully! Recipe confirmed.' : 'Settings saved successfully. (Ratios remain unconfirmed defaults).');
     setTimeout(() => setSaveMessage(null), 3000);
   };
 
@@ -190,28 +191,57 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     handleChange('bricksPerBatch', num);
                   }}
                 />
+                <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Default placeholder: ~120</span>
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Dust Ton</label>
+                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Dust Truck</label>
                 <input
                   type="number"
-                  min="10"
+                  min="100"
                   className="form-input tabular-nums"
                   value={formData.dustRatio}
                   onChange={e => handleChange('dustRatio', Number(e.target.value))}
                 />
+                <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Default placeholder: ~10,000</span>
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Fly Ash Ton</label>
+                <label className="form-label" style={{ fontSize: '13px' }}>Bricks / Raakh Unit</label>
                 <input
                   type="number"
-                  min="10"
+                  min="100"
                   className="form-input tabular-nums"
                   value={formData.raakhRatio}
                   onChange={e => handleChange('raakhRatio', Number(e.target.value))}
                 />
+                <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Default placeholder: ~2,500</span>
+              </div>
+            </div>
+
+            <div className="responsive-form-duo" style={{ marginTop: '12px' }}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '13px' }}>Dust Measuring Unit</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Trucks (800-900 CFT)"
+                  value={formData.unitDustLabel || 'Trucks (800-900 CFT)'}
+                  onChange={e => handleChange('unitDustLabel', e.target.value)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. Trucks (800-900 CFT), Trolley</span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '13px' }}>Fly Ash / Raakh Measuring Unit</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Trucks"
+                  value={formData.unitRaakhLabel || 'Trucks'}
+                  onChange={e => handleChange('unitRaakhLabel', e.target.value)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. Trucks, Trolley, Bori, Kg</span>
               </div>
             </div>
 
@@ -225,7 +255,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: formData.isRatioConfirmed ? '#166534' : '#64748B' }}>
                     <input
                       type="checkbox"
-                      checked={formData.isRatioConfirmed ?? false}
+                      checked={Boolean(formData.isRatioConfirmed)}
                       onChange={e => handleChange('isRatioConfirmed', e.target.checked)}
                       style={{ accentColor: '#10B981', cursor: 'pointer' }}
                     />
@@ -238,7 +268,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
               <p style={{ fontSize: '12px', color: 'var(--ink-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
                 Used to predict daily production when entering cement bags.
-                <em> Note: Dust and fly ash quantities are measured in Tons (weighbridge standard) for recipe reference but do not affect the cement-based prediction calculation.</em>
+                <em> Note: Dust and fly ash quantities are volume/trolley reference estimates and do not affect the cement-based prediction calculation.</em>
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
@@ -277,32 +307,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: '13px' }}>
-                    Batch Dust (Tons - Ref only)
+                    Batch Dust (Ref only)
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="0.001"
                     min="0"
                     className="form-input tabular-nums"
-                    value={formData.batchDustQty ?? 0.18}
+                    value={formData.batchDustQty ?? 0.01}
                     onChange={e => handleChange('batchDustQty', Number(e.target.value))}
                   />
-                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. 0.18 Ton (~180 kg dust)</span>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. 0.01 truck (~1/100th truck)</span>
                 </div>
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: '13px' }}>
-                    Batch Fly Ash (Tons - Ref only)
+                    Batch Fly Ash (Ref only)
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="0.001"
                     min="0"
                     className="form-input tabular-nums"
-                    value={formData.batchFlyAshQty ?? 0.05}
+                    value={formData.batchFlyAshQty ?? 0.04}
                     onChange={e => handleChange('batchFlyAshQty', Number(e.target.value))}
                   />
-                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. 0.05 Ton (~50 kg raakh)</span>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>e.g. 0.04 unit / batch</span>
                 </div>
               </div>
             </div>

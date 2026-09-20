@@ -53,10 +53,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
   // Materials string states (allows clean backspacing with no stuck 0)
   const [cementBagsStr, setCementBagsStr] = useState('70');
   const [cementRateStr, setCementRateStr] = useState('380');
-  const [dustTrucksStr, setDustTrucksStr] = useState('12.5'); // 12.5 Tons
-  const [dustRateStr, setDustRateStr] = useState('650'); // ₹650 / Ton
-  const [raakhQtyStr, setRaakhQtyStr] = useState('3.5'); // 3.5 Tons
-  const [raakhRateStr, setRaakhRateStr] = useState('450'); // ₹450 / Ton
+  const [dustTrucksStr, setDustTrucksStr] = useState('0.85'); // 0.85 Trucks
+  const [dustRateStr, setDustRateStr] = useState('8500'); // ₹8500 / Truck
+  const [raakhQtyStr, setRaakhQtyStr] = useState('3.4'); // 3.4 Trucks/Units
+  const [raakhRateStr, setRaakhRateStr] = useState('450'); // ₹450 / Unit
   const [manualMaterialCostStr, setManualMaterialCostStr] = useState('35000');
   const [workerRateStr, setWorkerRateStr] = useState(String(settings.defaultWorkerRate || 0.60));
   const [otherCostStr, setOtherCostStr] = useState('400');
@@ -360,9 +360,9 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                         </div>
                         <span className={`badge ${varianceBadgeClass}`} style={{ fontSize: '11px', fontWeight: 700 }}>
                           {variancePercent >= -5 && variancePercent <= 5 && '✓ Normal / On Target'}
-                          {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall — check mix/waste'}
-                          {variancePercent < -15 && '🚨 Significant Shortfall — check leakage/breakage'}
-                          {variancePercent > 5 && 'ℹ Exceeding estimate — check cement count/recipe'}
+                          {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall — review mix/waste'}
+                          {variancePercent < -15 && '🚨 Significant Shortfall — review raw material usage'}
+                          {variancePercent > 5 && 'ℹ Exceeding estimate — review cement count/recipe'}
                         </span>
                       </div>
                     )}
@@ -409,9 +409,9 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                         </div>
                         <span className={`badge ${varianceBadgeClass}`} style={{ fontSize: '11px', fontWeight: 700 }}>
                           {variancePercent >= -5 && variancePercent <= 5 && '✓ Normal / On Target'}
-                          {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall'}
-                          {variancePercent < -15 && '🚨 Significant Shortfall'}
-                          {variancePercent > 5 && 'ℹ Exceeding estimate'}
+                          {variancePercent < -5 && variancePercent >= -15 && '⚠ Slight Shortfall — review mix/waste'}
+                          {variancePercent < -15 && '🚨 Significant Shortfall — review raw material usage'}
+                          {variancePercent > 5 && 'ℹ Exceeding estimate — review cement count/recipe'}
                         </span>
                       </div>
                     )}
@@ -535,10 +535,10 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                 {/* Stone Dust Row */}
                 <div className="material-row-grid">
                   <div className="form-group">
-                    <label className="form-label">Stone Dust ({settings.unitDustLabel || 'Tons'})</label>
+                    <label className="form-label">Stone Dust ({settings.unitDustLabel || 'Trucks'})</label>
                     <input
                       type="number"
-                      step="0.1"
+                      step="0.05"
                       min="0"
                       placeholder="0"
                       className="form-input tabular-nums"
@@ -547,7 +547,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Rate (₹ / {settings.unitDustLabel || 'Ton'})</label>
+                    <label className="form-label">Rate (₹ / {settings.unitDustLabel ? settings.unitDustLabel.replace(/\s*\(.*\)/, '') : 'Truck'})</label>
                     <input
                       type="number"
                       min="0"
@@ -568,7 +568,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                 {/* Fly Ash / Raakh Row */}
                 <div className="material-row-grid">
                   <div className="form-group">
-                    <label className="form-label">Fly Ash / Raakh ({settings.unitRaakhLabel || 'Tons'})</label>
+                    <label className="form-label">Fly Ash / Raakh ({settings.unitRaakhLabel || 'Trucks'})</label>
                     <input
                       type="number"
                       step="0.1"
@@ -580,7 +580,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Rate (₹ / {settings.unitRaakhLabel || 'Ton'})</label>
+                    <label className="form-label">Rate (₹ / {settings.unitRaakhLabel || 'Truck'})</label>
                     <input
                       type="number"
                       min="0"
