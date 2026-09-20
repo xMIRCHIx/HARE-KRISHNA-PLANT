@@ -38,28 +38,43 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
 
   const [entryMode, setEntryMode] = useState<'closing' | 'planning'>('closing');
 
+  // Obtain last-saved rates for user convenience (falls back to defaults if no previous entries exist)
+  const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
+
   // Production count and dispatches (strings so backspace cleanly clears 0)
-  const [singleProducedStr, setSingleProducedStr] = useState('8400');
+  const [singleProducedStr, setSingleProducedStr] = useState('');
   const [soldStr, setSoldStr] = useState('0');
-  const [salePriceStr, setSalePriceStr] = useState(String(settings.defaultSalePrice || 4.5));
+  const [salePriceStr, setSalePriceStr] = useState(
+    lastEntry?.salePrice ? String(lastEntry.salePrice) : String(settings.defaultSalePrice || 4.5)
+  );
 
   // Multi-run lines or single count
   const [isMultiRun, setIsMultiRun] = useState(false);
   const [runLines, setRunLines] = useState<ProductionRunLine[]>([
-    { id: '1', name: 'Shift 1 (Morning)', produced: 4200 },
-    { id: '2', name: 'Shift 2 (Afternoon)', produced: 4200 }
+    { id: '1', name: 'Shift 1 (Morning)', produced: 0 },
+    { id: '2', name: 'Shift 2 (Afternoon)', produced: 0 }
   ]);
 
   // Materials string states (allows clean backspacing with no stuck 0)
-  const [cementBagsStr, setCementBagsStr] = useState('70');
-  const [cementRateStr, setCementRateStr] = useState('380');
-  const [dustTrucksStr, setDustTrucksStr] = useState('0.85'); // 0.85 Trucks
-  const [dustRateStr, setDustRateStr] = useState('8500'); // ₹8500 / Truck
-  const [raakhQtyStr, setRaakhQtyStr] = useState('3.4'); // 3.4 Trucks/Units
-  const [raakhRateStr, setRaakhRateStr] = useState('450'); // ₹450 / Unit
-  const [manualMaterialCostStr, setManualMaterialCostStr] = useState('35000');
-  const [workerRateStr, setWorkerRateStr] = useState(String(settings.defaultWorkerRate || 0.60));
-  const [otherCostStr, setOtherCostStr] = useState('400');
+  // Quantities start EMPTY for every fresh entry (real plant daily data)
+  // Rate fields default to the last-saved rate for operator convenience
+  const [cementBagsStr, setCementBagsStr] = useState('');
+  const [cementRateStr, setCementRateStr] = useState(
+    lastEntry?.cementRate ? String(lastEntry.cementRate) : '380'
+  );
+  const [dustTrucksStr, setDustTrucksStr] = useState(''); // Empty quantity
+  const [dustRateStr, setDustRateStr] = useState(
+    lastEntry?.dustRate ? String(lastEntry.dustRate) : '8500' // ₹/Truck last saved
+  );
+  const [raakhQtyStr, setRaakhQtyStr] = useState(''); // Empty quantity
+  const [raakhRateStr, setRaakhRateStr] = useState(
+    lastEntry?.raakhRate ? String(lastEntry.raakhRate) : '450' // ₹/Unit last saved
+  );
+  const [manualMaterialCostStr, setManualMaterialCostStr] = useState('');
+  const [workerRateStr, setWorkerRateStr] = useState(
+    lastEntry?.workerRate ? String(lastEntry.workerRate) : String(settings.defaultWorkerRate || 0.60)
+  );
+  const [otherCostStr, setOtherCostStr] = useState('0');
   const [note, setNote] = useState<string>('');
   const [varianceNote, setVarianceNote] = useState<string>('');
 
@@ -149,7 +164,7 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
     const nextNum = runLines.length + 1;
     setRunLines([
       ...runLines,
-      { id: Date.now().toString(), name: `Batch #${nextNum}`, produced: 2000 }
+      { id: Date.now().toString(), name: `Shift #${nextNum}`, produced: 0 }
     ]);
   };
 
@@ -829,13 +844,13 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: liveCalc.profitPerBrick >= 0 ? '#F5F3FF' : '#FEE2E2', color: liveCalc.profitPerBrick >= 0 ? '#7C3AED' : '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: totalProduced === 0 ? '#F1F5F9' : liveCalc.profitPerBrick >= 0 ? '#F5F3FF' : '#FEE2E2', color: totalProduced === 0 ? '#64748B' : liveCalc.profitPerBrick >= 0 ? '#7C3AED' : '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Calculator size={17} />
                 </div>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>Live Dynamic Costing</h3>
               </div>
-              <span className={`badge ${liveCalc.profitPerBrick >= 0 ? 'badge-good' : 'badge-bad'}`}>
-                {liveCalc.profitPerBrick >= 0 ? 'PROFITABLE MARGIN' : 'HIGH PRODUCTION COST'}
+              <span className={`badge ${totalProduced === 0 ? 'badge-muted' : liveCalc.profitPerBrick >= 0 ? 'badge-good' : 'badge-bad'}`}>
+                {totalProduced === 0 ? 'READY FOR ENTRY' : liveCalc.profitPerBrick >= 0 ? 'PROFITABLE MARGIN' : 'HIGH PRODUCTION COST'}
               </span>
             </div>
 
@@ -859,11 +874,11 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                   style={{
                     fontSize: '34px',
                     fontWeight: 800,
-                    color: liveCalc.profitPerBrick >= 0 ? '#0F172A' : '#DC2626',
+                    color: totalProduced === 0 ? '#64748B' : liveCalc.profitPerBrick >= 0 ? '#0F172A' : '#DC2626',
                     letterSpacing: '-0.02em'
                   }}
                 >
-                  ₹{liveCalc.costPerBrick.toFixed(2)}
+                  ₹{totalProduced > 0 ? liveCalc.costPerBrick.toFixed(2) : '0.00'}
                 </span>
                 <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>/ brick</span>
               </div>
@@ -875,8 +890,8 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
             {/* Profit Margin */}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #E2E8F0', fontSize: '13px' }}>
               <span style={{ color: '#475569', fontWeight: 500 }}>Expected Unit Margin:</span>
-              <span className="tabular-nums" style={{ fontWeight: 800, color: liveCalc.profitPerBrick >= 0 ? '#059669' : '#DC2626' }}>
-                {liveCalc.profitPerBrick >= 0 ? '+' : ''}₹{liveCalc.profitPerBrick.toFixed(2)} ({liveCalc.marginPercent.toFixed(1)}%)
+              <span className="tabular-nums" style={{ fontWeight: 800, color: totalProduced === 0 ? '#64748B' : liveCalc.profitPerBrick >= 0 ? '#059669' : '#DC2626' }}>
+                {totalProduced > 0 ? `${liveCalc.profitPerBrick >= 0 ? '+' : ''}₹${liveCalc.profitPerBrick.toFixed(2)} (${liveCalc.marginPercent.toFixed(1)}%)` : '—'}
               </span>
             </div>
 
