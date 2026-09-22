@@ -12,7 +12,8 @@ import {
   Languages,
   X,
   IndianRupee,
-  FileText
+  FileText,
+  Globe
 } from 'lucide-react';
 import { Language, translations } from '../lib/i18n';
 
@@ -28,6 +29,7 @@ interface SidebarProps {
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
   dueCount?: number;
+  onOpenWebsite?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -39,7 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLanguageChange,
   isMobileOpen = false,
   onCloseMobile,
-  dueCount = 0
+  dueCount = 0,
+  onOpenWebsite
 }) => {
   const t = translations[language].sidebar;
 
@@ -364,6 +367,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
             background: '#F8FAFC'
           }}
         >
+          {/* Public Website Button */}
+          {onOpenWebsite && (
+            <button
+              type="button"
+              onClick={onOpenWebsite}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '7px',
+                width: '100%',
+                padding: '8px 10px',
+                background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
+                color: '#6D28D9',
+                border: '1px solid #DDD6FE',
+                borderRadius: '8px',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Globe size={14} />
+              <span>Customer Website & Rates</span>
+            </button>
+          )}
+
           {/* Supabase status badge */}
           <div
             title={`Supabase Cloud Database (${syncStatus})`}

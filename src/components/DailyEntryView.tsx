@@ -60,15 +60,15 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
   // Rate fields default to the last-saved rate for operator convenience
   const [cementBagsStr, setCementBagsStr] = useState('');
   const [cementRateStr, setCementRateStr] = useState(
-    lastEntry?.cementRate ? String(lastEntry.cementRate) : '380'
+    lastEntry?.cementRate ? String(lastEntry.cementRate) : '310'
   );
   const [dustTrucksStr, setDustTrucksStr] = useState(''); // Empty quantity
   const [dustRateStr, setDustRateStr] = useState(
-    lastEntry?.dustRate ? String(lastEntry.dustRate) : '8500' // ₹/Truck last saved
+    lastEntry?.dustRate ? String(lastEntry.dustRate) : '7500' // ₹/Truck last saved
   );
   const [raakhQtyStr, setRaakhQtyStr] = useState(''); // Empty quantity
   const [raakhRateStr, setRaakhRateStr] = useState(
-    lastEntry?.raakhRate ? String(lastEntry.raakhRate) : '450' // ₹/Unit last saved
+    lastEntry?.raakhRate ? String(lastEntry.raakhRate) : '400' // ₹/Ton last saved
   );
   const [manualMaterialCostStr, setManualMaterialCostStr] = useState('');
   const [workerRateStr, setWorkerRateStr] = useState(
@@ -176,6 +176,15 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
     setRunLines(
       runLines.map(r => (r.id === id ? { ...r, [field]: val } : r))
     );
+  };
+
+  const handleAutoFillRecipe = () => {
+    if (cementBags <= 0) return;
+    const est = predictedBricks > 0 ? predictedBricks : Math.round(cementBags * (settings.cementRatio || 300));
+    const dustEst = Number((est / (settings.dustRatio || 10000)).toFixed(2));
+    const raakhEst = Number((est / (settings.raakhRatio || 2500)).toFixed(1));
+    setDustTrucksStr(String(dustEst));
+    setRaakhQtyStr(String(raakhEst));
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -546,6 +555,47 @@ export const DailyEntryView: React.FC<DailyEntryViewProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Auto-Fill Plant Recipe Helper when Cement Bags are entered */}
+                {cementBags > 0 && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    background: '#F5F3FF',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #DDD6FE'
+                  }}>
+                    <span style={{ fontSize: '11.5px', color: '#6D28D9', fontWeight: 500 }}>
+                      ⚡ Recipe estimate for <strong>{cementBags} bags</strong> (~{predictedBricks.toLocaleString('en-IN')} bricks): <strong>~{Number((predictedBricks / (settings.dustRatio || 10000)).toFixed(2))} trucks dust</strong>, <strong>~{Number((predictedBricks / (settings.raakhRatio || 2500)).toFixed(1))} tons fly ash</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAutoFillRecipe}
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: '#6D28D9',
+                        background: '#FFFFFF',
+                        border: '1.5px solid #C4B5FD',
+                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        boxShadow: '0 1px 3px rgba(109, 40, 217, 0.1)'
+                      }}
+                      title="Auto-fill dust and fly ash according to plant batch recipe"
+                    >
+                      <Sparkles size={12} color="#7C3AED" />
+                      <span>Auto-Fill Recipe</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Stone Dust Row */}
                 <div className="material-row-grid">

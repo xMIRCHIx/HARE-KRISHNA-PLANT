@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Search, Calendar, Bell, Sparkles } from 'lucide-react';
+import { Menu, Search, Calendar, Bell, Sparkles, Globe } from 'lucide-react';
 import { Sidebar, ActiveTab } from './components/Sidebar';
 import { LoginGate } from './components/LoginGate';
+import { VisitorView } from './components/VisitorView';
 import { DashboardView } from './components/DashboardView';
 import { DailyEntryView } from './components/DailyEntryView';
 import { LedgerView } from './components/LedgerView';
@@ -60,6 +61,33 @@ export const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>(() => {
     return (localStorage.getItem('hkb_app_lang') as Language) || 'en';
   });
+
+  // View mode: 'visitor' (public customer landing page) or 'portal' (internal plant management ERP)
+  const [viewMode, setViewMode] = useState<'visitor' | 'portal'>(() => {
+    if (typeof window !== 'undefined') {
+      if (window.location.hash === '#portal') return 'portal';
+      if (window.location.hash === '#website') return 'visitor';
+      const saved = localStorage.getItem('hkb_view_mode');
+      if (saved === 'portal' || saved === 'visitor') return saved;
+    }
+    return getAuthSession() ? 'portal' : 'visitor';
+  });
+
+  const handleSwitchToPortal = () => {
+    setViewMode('portal');
+    localStorage.setItem('hkb_view_mode', 'portal');
+    if (typeof window !== 'undefined') {
+      window.location.hash = 'portal';
+    }
+  };
+
+  const handleSwitchToWebsite = () => {
+    setViewMode('visitor');
+    localStorage.setItem('hkb_view_mode', 'visitor');
+    if (typeof window !== 'undefined') {
+      window.location.hash = 'website';
+    }
+  };
 
   // Core business state
   const [settings, setSettings] = useState<Settings>(getStoredSettings);
@@ -265,11 +293,24 @@ export const App: React.FC = () => {
     }
   };
 
+  if (viewMode === 'visitor') {
+    return (
+      <VisitorView
+        onOpenPortal={handleSwitchToPortal}
+        plantSellingPrice={settings.defaultSalePrice}
+        contactPhone="+91 93404 11838"
+        whatsappNumber="919340411838"
+        isAuthenticated={isAuthenticated}
+      />
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <LoginGate
         correctPassword={settings.adminPassword}
         onLoginSuccess={handleLoginSuccess}
+        onBackToWebsite={handleSwitchToWebsite}
       />
     );
   }
@@ -289,6 +330,7 @@ export const App: React.FC = () => {
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         dueCount={dueOrdersCount}
+        onOpenWebsite={handleSwitchToWebsite}
       />
 
       {/* Main Workspace Screen */}
@@ -330,14 +372,38 @@ export const App: React.FC = () => {
             </span>
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            style={{ padding: '5px 12px', fontSize: '11.5px', borderRadius: '7px' }}
-            onClick={() => setActiveTab('daily-entry')}
-          >
-            + Log
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              type="button"
+              onClick={handleSwitchToWebsite}
+              style={{
+                background: '#F1F5F9',
+                border: '1px solid #E2E8F0',
+                color: '#475569',
+                padding: '5px 8px',
+                borderRadius: '7px',
+                fontSize: '11px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer'
+              }}
+              title="Open Customer Website"
+            >
+              <Globe size={12} color="#7C3AED" />
+              <span>Website</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              style={{ padding: '5px 12px', fontSize: '11.5px', borderRadius: '7px' }}
+              onClick={() => setActiveTab('daily-entry')}
+            >
+              + Log
+            </button>
+          </div>
         </header>
 
         {/* Desktop Top Navbar Bar (Hexabox Signature) */}
@@ -360,6 +426,29 @@ export const App: React.FC = () => {
               <span style={{ color: '#CBD5E1' }}>•</span>
               <span style={{ color: '#7C3AED', fontWeight: 700 }}>Fly Ash Compaction</span>
             </div>
+
+            <button
+              type="button"
+              onClick={handleSwitchToWebsite}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                background: '#F5F3FF',
+                border: '1px solid #DDD6FE',
+                borderRadius: '8px',
+                fontSize: '12px',
+                color: '#6D28D9',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              title="Open Customer Landing Page & Wall Calculator"
+            >
+              <Globe size={13} />
+              <span>Customer Website & Rates</span>
+            </button>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>

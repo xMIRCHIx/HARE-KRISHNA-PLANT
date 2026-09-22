@@ -11,9 +11,9 @@ const STORAGE_KEYS = {
 
 export const DEFAULT_SETTINGS: Settings = {
   productionEstimateMode: 'fixed',
-  cementRatio: 120, // 120 bricks per 50kg bag (unconfirmed placeholder default)
-  dustRatio: 10000, // 10,000 bricks per 800-900 CFT truck (unconfirmed placeholder default)
-  raakhRatio: 2500, // 2,500 bricks per Ton of fly ash (unconfirmed placeholder default)
+  cementRatio: 300, // 300 bricks per 50kg bag (Plant confirmed: ~33 bags = 10,000 bricks)
+  dustRatio: 10000, // 10,000 bricks per 800-900 CFT truck
+  raakhRatio: 2500, // 2,500 bricks per Ton of fly ash
   defaultWorkerRate: 0.60, // ₹0.60 per brick payoff
   defaultSalePrice: 4.00, // ₹4.00 benchmark selling price
   overheadSplitMode: 'separate',
@@ -24,10 +24,10 @@ export const DEFAULT_SETTINGS: Settings = {
   unitDustLabel: 'Trucks (800-900 CFT)',
   allowUdhaarCredit: true,
   batchCementBags: 1,
-  batchDustQty: 0.01,
-  batchFlyAshQty: 0.05,
-  bricksPerBatch: 120,
-  isRatioConfirmed: false
+  batchDustQty: 0.03, // ~0.03 truck (300 bricks)
+  batchFlyAshQty: 0.12, // ~0.12 Ton (120 kg raakh for 300 bricks)
+  bricksPerBatch: 300,
+  isRatioConfirmed: true
 };
 
 // Clean initial state (no fake dummy data)
@@ -48,18 +48,20 @@ export function getStoredSettings(): Settings {
     if (parsed.unitDustLabel && parsed.unitDustLabel.toLowerCase().includes('ton')) {
       parsed.unitDustLabel = 'Trucks (800-900 CFT)';
       if (parsed.dustRatio === 600) parsed.dustRatio = 10000;
-      if (parsed.batchDustQty === 0.18) parsed.batchDustQty = 0.01;
+      if (parsed.batchDustQty === 0.18) parsed.batchDustQty = 0.03;
     }
     // Fly ash stays in Metric Tons as plant measures raakh in Tons
     if (!parsed.unitRaakhLabel || parsed.unitRaakhLabel.toLowerCase().includes('truck')) {
       parsed.unitRaakhLabel = 'Tons';
-      if (!parsed.batchFlyAshQty || parsed.batchFlyAshQty === 0.04) parsed.batchFlyAshQty = 0.05;
+      if (!parsed.batchFlyAshQty || parsed.batchFlyAshQty === 0.04) parsed.batchFlyAshQty = 0.12;
     }
-    // Ensure placeholder defaults are never pre-confirmed as verified
-    if (parsed.cementRatio === 120 && (parsed.dustRatio === 10000 || parsed.dustRatio === 600) && parsed.raakhRatio === 2500) {
-      parsed.isRatioConfirmed = false;
-    } else if (parsed.isRatioConfirmed === undefined) {
-      parsed.isRatioConfirmed = false;
+    // Auto-calibrate uncalibrated default ratio (120 or 140) to confirmed 300 bricks/bag (33 bags = 10,000 bricks)
+    if (parsed.cementRatio === 120 || parsed.cementRatio === 140 || !parsed.cementRatio) {
+      parsed.cementRatio = 300;
+      parsed.bricksPerBatch = 300;
+      parsed.batchDustQty = 0.03;
+      parsed.batchFlyAshQty = 0.12;
+      parsed.isRatioConfirmed = true;
     }
     return { ...DEFAULT_SETTINGS, ...parsed };
   } catch {

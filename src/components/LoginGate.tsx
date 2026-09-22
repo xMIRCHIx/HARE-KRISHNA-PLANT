@@ -14,11 +14,13 @@ import {
 interface LoginGateProps {
   onLoginSuccess: () => void;
   correctPassword: string;
+  onBackToWebsite?: () => void;
 }
 
 export const LoginGate: React.FC<LoginGateProps> = ({
   onLoginSuccess,
-  correctPassword
+  correctPassword,
+  onBackToWebsite
 }) => {
   const [inputPassword, setInputPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -379,6 +381,39 @@ export const LoginGate: React.FC<LoginGateProps> = ({
               Connected to <strong>Supabase Cloud Database</strong> with encrypted local session storage.
             </span>
           </div>
+
+          {onBackToWebsite && (
+            <div style={{ marginTop: '18px', textAlign: 'center' }}>
+              <button
+                type="button"
+                onClick={onBackToWebsite}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748B',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = '#0F172A';
+                  e.currentTarget.style.background = '#F1F5F9';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = '#64748B';
+                  e.currentTarget.style.background = 'none';
+                }}
+              >
+                <span>← Back to Customer Website & Calculator</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
